@@ -1,0 +1,5 @@
+-cp src
+-D analyzer-optimize
+-D dce=no
+-main Main
+--interp
