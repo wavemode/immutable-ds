@@ -1,109 +1,226 @@
+/**
+ *  Copyright (c) 2020-present, Chukwudi Okechukwu
+ *
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
+ *
+ */
+
 package wavemode.immutable;
 
 #if macro
+import haxe.macro.Context;
 import haxe.macro.Expr;
 #end
 
-import haxe.ds.Map as HxMap;
 import haxe.ds.Option;
+using haxe.EnumTools.EnumValueTools;
 
-abstract OrderedMap<K, V>(Array<{k: K, v: V}>) from Array<{k: K, v: V}> {
+class OrderedMap<K, V> {
 
-    public static macro function from(expr : Expr) : Expr { // TODO: implement
-        return macro null;
+    private var data : Array<{key: K, value: V}>;
+    static function fromArray<K, V>(arr : Array<{key: K, value: V}>) : OrderedMap<K, V> {
+        var map = new OrderedMap<K, V>();
+        map.data = arr;
+        return map;
     }
 
-    @:from public static function fromMap<K, V>(?map : HxMap<K, V>) : OrderedMap<K, V> {
-        var result = [];
-        if (map != null) {
-            for (k => v in map) result.push({k: k, v: v});
+    public function toString() : String {
+        var result = "OrderedMap {";
+        var cut = false;
+
+        for (k => v in this) {
+            cut = true;
+            result += ' $k: $v,';
         }
-        return result;
+
+        if (cut) result = result.substr(0, result.length - 1);
+        return result + " }";
     }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////// API
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+        Create a new empty Map.
+    **/
+    public function new() { data = []; }
+
+    /**
+        Iterator over each value in the Map.
+    **/
+    public function iterator() : Iterator<V> {
+        var i = 0;
+        return {
+            hasNext: () -> i < data.length,
+            next: () -> data[i++].value
+        };
+    }
+
+    /**
+        Iterator over each key-value pair in the Map.
+    **/
+    public function keyValueIterator() : KeyValueIterator<K, V> {
+        var i = 0;
+        return {
+            hasNext: () -> i < data.length,
+            next: () -> data[i++]
+        };
+    }
+
+    /**
+        Macro which creates a new `OrderedMap` from a struct literal.
+
+        ```haxe
+        OrderedMap.from({a: 10, b: 5})
+        ```
+
+        is equivalent to
+
+        ```haxe
+        OrderedMap.fromMap(["a" => 10, "b" => 5])
+        ```
+    **/
+    public static macro function from<K, V>(expr : Expr) : ExprOf<OrderedMap<K, V>> {
+        var names = [], exprs = [];
+        switch expr.expr {
+            case EObjectDecl(fields):
+                for (field in fields) {
+                    names.push(field.field);
+                    exprs.push(field.expr);
+                }
+            default:
+                Context.error("Struct literal required here.", expr.pos);
+        }
+        var arrExprs = [];
+        for (i in 0...exprs.length) {
+            arrExprs.push(macro result = result.set($v{names[i]}, $e{exprs[i]}));
+        }
+        var expr = macro @:pos(Context.currentPos()) {
+            var result = new OrderedMap();
+            $a{arrExprs}
+            result;
+        }
+        return expr;
+    }
+
+    /**
+        Create a new `OrderedMap` from a `haxe.ds.Map`
+    **/
+    public static function fromMap<K, V>(map : haxe.ds.Map<K, V>) : OrderedMap<K, V> {
+
+        var result = [];
+        for (k => v in map) {
+            result.push({key: k, value: v});
+        }
+        var map = new OrderedMap();
+        map.data = result;
+        return map;
+
+    }
+
+    /**
+        Number of keys that are in the map. Read-only property.
+    **/
+    public var length(get, never) : Int;
+    function get_length() return data.length;
+
     /**
         Returns a new Map containing the new (key, value) pair. If an equivalent key already 
         exists in this Map, it will be replaced.
-
-        ```haxe
-        var originalMap = new Map<String, String>(); // Map {}
-        var newerMap = originalMap.set("key", "value"); // Map { "key": "value" }
-        var newestMap = newerMap.set("key", "newer value"); // Map { "key": "newer value" }
-        ```
     **/
-
-    public function set(key: K, value: V): OrderedMap<K, V> { // TODO: implement
-        return null;
+    public function set(key: K, newValue: V): OrderedMap<K, V> {
+        var i = 0, arr = data.copy();
+        var insert = true;
+        for (k => v in this) {
+            if (key == k) {
+                arr[i] = {key: k, value: newValue};
+                insert = false;
+                break;
+            }
+            i++;
+        }
+        if (insert) arr.push({key: key, value: newValue});
+        return fromArray(arr);
     }
 
     /**
-        Returns a new Map which excludes this key. 
+        Returns a new Map containing the all the values in `keys` set to all values in `values`.
+        If any equivalent keys already exists in this Map, they will be replaced.
 
-        ```haxe
-        var originalMap : Map<String, String> = ["key" => "value", "otherKey" => "other value"];
-        var newMap = originalMap.remove("otherKey"); // OrderedMap { "key": "value" }
-        ```
+        This is equivalent to calling `set()` for each pair individually, but potentially more
+        efficient.
     **/
-    public function remove(key: K): OrderedMap<K, V> { // TODO: implement
-        var originalMap = OrderedMap.fromMap(["key" => "value", "otherKey" => "other value"]);
-        var newMap = originalMap.removeAll(["other value", "value"]); // OrderedMap {}
-        return null;
+    public function setAll(keys: Iterable<K>, values: Iterable<V>): OrderedMap<K, V> {
+        var map = this, it = values.iterator();
+        for (key in keys) {
+            map = map.set(key, it.next());
+        }
+        return map;
     }
 
     /**
-        Returns a new Map which excludes this value. 
-        
-        ```haxe
-        var originalMap : Map<String, String> = ["key" => "value", "otherKey" => "other value"];
-        var newMap = originalMap.removeValue("other value"); // OrderedMap { "key": "value" }
-        ```
+        Returns a new Map which excludes this key.
     **/
-    public function removeValue(value : V): OrderedMap<K, V> { // TODO: implement
-        return null;
+    public function remove(key: K): OrderedMap<K, V> {
+        var i = 0, arr = data;
+        for (k => v in this) {
+            if (key == k) {
+                arr = arr.slice(0, i).concat(arr.slice(i + 1));
+                break;
+            }
+            i++;
+        }
+        return fromArray(arr);
+    }
+
+    /**
+        Returns a new Map which excludes this value.
+    **/
+    public function removeValue(value : V): OrderedMap<K, V> {
+        var i = 0, arr = data;
+        for (v in this) {
+            if (value == v) {
+                arr = arr.slice(0, i).concat(arr.slice(i + 1));
+                break;
+            }
+            i++;
+        }
+        return fromArray(arr);
     }
 
     /**
         Returns a new Map which excludes the provided keys.
 
-        ```haxe
-        var names : OrderedMap<String, String> = [ "a" => "Aaron", "b" => "Barry", "c" => "Connor" ];
-        var newNames = names.removeAll([ "a", "c" ]); // OrderedMap { "b": "Barry" }
-        ```
+        This is equivalent to calling `remove()` for each key individually, but potentially more
+        efficient.
     **/
-    public macro function removeAll(ethis : Expr, keys: ExprOf<Iterable<K>>) : ExprOf<OrderedMap<K, V>> { // TODO: implement
-        return macro {
-            var map = $e{ethis};
-            for (key in $e{keys}) {
-                var hash : Hash = key;
-                map = map.remove(key);
-            }
-            map;
+    public function removeAll(keys: Iterable<K>) : OrderedMap<K, V> {
+        var map = this;
+        for (key in keys) {
+            map = map.remove(key);
         }
+        return map;
     }
 
     /**
-        Returns a new Map which excludes the provided values. 
-        
-        ```haxe
-        var originalMap : Map<String, String> = ["key" => "value", "otherKey" => "other value"];
-        var newMap = originalMap.removeAllValues(["other value", "value"]); // OrderedMap {}
-        ```
+        Returns a new Map which excludes the provided values.
+
+        This is equivalent to calling `remove()` for each value individually, but potentially more
+        efficient.
     **/
     public inline function removeAllValues(values : Iterable<V>): OrderedMap<K, V> {
-        var map : OrderedMap<K, V> = this;
+        var map = this;
         for (value in values) map = map.removeValue(value);
         return map;
     }
 
     /**
         Returns a new Map containing no keys or values.
-
-        ```haxe
-        var map : Map<String, String> = ["key" => "value" ];
-        var clearedMap = map.clear(); // Map {}
-        ```
     **/
     public function clear() : OrderedMap<K, V> { // TODO: implement
-        return null;
+        return fromArray([]);
     }
 
     /**
@@ -111,15 +228,18 @@ abstract OrderedMap<K, V>(Array<{k: K, v: V}>) from Array<{k: K, v: V}> {
     
         Similar to `map.set(key, updater(map.get(key)))`.
 
-        ```haxe
-        var aMap : Map<String, String> = ["key" => "value"];
-        var newMap = aMap.update("key", value -> value + value); // Map { "key": "valuevalue" }
-        ```
-
         If `key` does not exist, this function returns the unaltered map.
     **/
-    public function update(key: K, updater: V -> V): OrderedMap<K, V> { // TODO: implement
-        return null;
+    public function update(key: K, updater: V -> V): OrderedMap<K, V> {
+        var i = 0, arr = data.copy();
+        for (k => v in this) {
+            if (key == k) {
+                arr[i] = {key: k, value: updater(arr[i].value)};
+                break;
+            }
+            i++;
+        }
+        return fromArray(arr);
     }
 
     /**
@@ -128,142 +248,185 @@ abstract OrderedMap<K, V>(Array<{k: K, v: V}>) from Array<{k: K, v: V}> {
         
         If `mergeFunction` is provided, it is used to resolve key conflicts. If not, keys from
         `other` override keys from this Map.
-
-        ```haxe
-        var one : Map<String, Float> = ["a" => 10, "b" => 20, "c" => 30 ];
-        var two : Map<String, Float> = ["b" => 40, "a" => 50, "d" => 60 ];
-
-        var three = one.merge(two);
-        // Map { "a": 50, "b": 40, "c": 30, "d": 60 }
-        
-        var four = one.mergeWith(two, (oldVal, newVal) -> oldVal / newVal);
-        // Map { "a": 0.2, "b": 0.5, "c": 30, "d": 60 }
-        ```
     **/
-    public function merge(other: OrderedMap<K, V>, ?mergeFunction : (V, V) -> V) : OrderedMap<K, V> { // TODO: implement
-        return null;
+    public function merge(other: OrderedMap<K, V>, ?mergeFunction : (V, V) -> V) : OrderedMap<K, V> {
+        var result = this;
+        for (k => v1 in other) {
+            switch get(k) {
+                case Some(v2) if (mergeFunction != null):
+                    result = result.set(k, mergeFunction(v2, v1));
+                default:
+                    result = result.set(k, v1);
+            }
+        }
+        return result;
     }
 
     /**
-        Returns a new Map resulting from merging each Map in `others` into this Map. In other words, this 
-        takes each entry of each map in `others` and sets it on this Map.
+        Returns a new Map resulting from merging each Map in `others` into this Map. In other words, 
+        this takes each entry of each map in `others` and sets it on this Map.
         
         If `mergeFunction` is provided, it is used to resolve key conflicts. If not, keys from
         `others` override keys from this Map, and keys from Map objects appearing later in the
         list override keys from earlier ones.
 
-        ```haxe
-        var one : Map<String, Float> = ["a" => 10, "b" => 20, "c" => 30 ];
-        var two : Map<String, Float> = ["b" => 40, "a" => 50, "d" => 60 ];
-        var three : Map<String, Float> = ["d" => 80, "e" => 70, "f" => 100 ];
-
-        var four = one.mergeAll([two, three]);
-        // Map { "a": 50, "b": 40, "c": 30, "d": 80, "e": 70, "f": 100 }
-        ```
+        This is equivalent to calling `merge()` for each map individually, but potentially more
+        efficient.
     **/
-    public function mergeAll(others : Array<OrderedMap<K, V>>, ?mergeFunction : (V, V) -> V) : OrderedMap<K, V> { // TODO: implement
-        return null;
+    public function mergeAll(others : Iterable<OrderedMap<K, V>>, ?mergeFunction : (V, V) -> V) : OrderedMap<K, V> { // TODO: implement
+        var result = this;
+        for (other in others) result = result.merge(other, mergeFunction);
+        return result;
     }
 
     /**
         Returns a new Map with values passed through a mapper function.
-
-        ```haxe
-        var aMap : Map<String, Int> = ["a" => 1, "b": 2 ];
-        var newMap = aMap.map(x -> 10 * x); // Map { a: 10, b: 20 }
-        ```
     **/
-    public function map<M>(mapper: V -> M): OrderedMap<K, M> { // TODO: implement
-        return null;
+    public function map<M>(mapper: V -> M): OrderedMap<K, M> {
+        return fromArray(data.map(pair -> {key: pair.key, value: mapper(pair.value)}));
     }
 
     /**
         Returns a new Map with values passed through a mapper function.
         Same as `map` except the mapper function takes a key as well.
-
-        ```haxe
-        var aMap : Map<String, Int> = ["a" => 1, "b": 2 ];
-        var newMap = aMap.mapWithKey((k, v) -> 10 * v); // Map { a: 10, b: 20 }
-        ```
     **/
-    public function mapWithKey<M>(mapper: (K, V) -> M): OrderedMap<K, M> { // TODO: implement
-        return null;
+    public function mapWithKey<M>(mapper: (K, V) -> M): OrderedMap<K, M> {
+        return fromArray(data.map(pair -> {key: pair.key, value: mapper(pair.key, pair.value)}));
     }
 
     /**
         Returns a new Map with keys passed through a mapper function.
-
-        ```haxe
-        var aMap : Map<String, Int> = ["a" => 1, "b": 2 ];
-        var newMap = aMap.mapKeys((k, v) -> v + "a"); // Map { aa: 1, ba: 2 }
-        ```
     **/
-    public function mapKeys<M>(mapper: (K, V) -> M): OrderedMap<M, V> { // TODO: implement
-        return null;
+    public function mapKeys<M>(mapper: (K, V) -> M): OrderedMap<M, V> {
+        return fromArray(data.map(pair -> {key: mapper(pair.key, pair.value), value: pair.value}));
     }
 
     
     /**
         Returns a new Map with (key, value) entries passed through a mapper function.
-
-        ```haxe
-        var aMap : Map<String, Int> = ["a" => 1, "b": 2 ];
-        var newMap = aMap.mapEntries((k, v) -> {k: v, v: k + "aa"}); // Map { 1: aaa, 2: baa }
-        ```
     **/
-    public function mapEntries<MK, MV>(mapper: (K, V) -> {k: MK, v: MV}): OrderedMap<MK, MV> { // TODO: implement
-        return null;
+    public function mapEntries<MK, MV>(mapper: (K, V) -> {key: MK, value: MV}): OrderedMap<MK, MV> {
+        return fromArray(data.map(pair -> mapper(pair.key, pair.value)));
     }
 
     /**
         Returns a new Map with only the entries for which the predicate function returns true.
-
-        ```haxe
-        var aMap : Map<String, Int> = ["a" => 1, "b" => 2, "c" => 3, "d" => 4];
-        var newMap = aMap.filter((x) -> x % 2 === 0); // Map { b: 2, d: 4 }
-        ```
     **/
-    public function filter(predicate: V -> Bool) : OrderedMap<K, V> { // TODO: implement
-        return null;
+    public function filter(predicate: V -> Bool) : OrderedMap<K, V> {
+        return fromArray(data.filter(pair -> predicate(pair.value)));
     }
 
     /**
         Returns a new Map with only the entries for which the predicate function returns true.
         Same as `filter` except the predicate function takes a key as well.
-
-        ```haxe
-        var aMap : Map<String, Int> = ["a" => 1, "b" => 2, "c" => 3, "d" => 4];
-        var newMap = aMap.filterWithKey((k, x) -> x % 2 == 0); // Map { b: 2, d: 4 }
-        ```
     **/
-    public function filterWithKey(predicate: (K, V) -> Bool) : OrderedMap<K, V> { // TODO: implement
-        return null;
+    public function filterWithKey(predicate: (K, V) -> Bool) : OrderedMap<K, V> {
+        return fromArray(data.filter(pair -> predicate(pair.key, pair.value)));
     }
 
     /**
         Returns a new Map where the keys and values have been flipped.
-
-        ```haxe
-        var aMap = ["a" => "z", "b" => "y"];
-        var newMap = aMap.flip(); // Map { "z": "a", "y": "b" }
-        ```
     **/
-    public function flip(): OrderedMap<V, K> { // TODO: implement
-        return null;
+    public function flip(): OrderedMap<V, K> {
+        return this.mapEntries((k, v) -> {key: v, value: k});
+    }
+
+    /**
+        An iterator of this Map's keys.
+    **/
+    public function keys(): Iterator<K> { // TODO: implement
+        var i = 0;
+        return {
+            hasNext: () -> i < data.length,
+            next: () -> data[i++].key
+        };
+    }
+
+    /**
+        An iterator of this Map's keys. Equivalent to `iterator()`.
+    **/
+    public function values(): Iterator<V> {
+        return iterator();
+    }
+
+    /**
+        An iterator of this Map's entries as key-value pairs.
+    **/
+    public function entries(): Iterator<{key: K, value: V}> {
+        return data.iterator();
+    }
+
+    /**
+        True if this and the other Map have identical keys and values.
+    **/
+    public function equals(other: OrderedMap<K, V>): Bool {
+        if (length != other.length) return false;
+        for (key => value in this) {
+            if (!other.get(key).equals(Some(value))) return false;
+        }
+        return true;
+    }
+
+    /**
+        Returns the value associated with the provided key, or None if the Map does not contain this key.
+    **/
+    public function get(key: K): Option<V> {
+        for (k => v in this) {
+            if (key == k) {
+                return Some(v);
+            }
+        }
+        return None;
+    }
+
+    /**
+        True if a key exists within this Map.
+    **/
+    public function has(key: K): Bool {
+        return !get(key).equals(None);
+    }
+
+    /**
+        True if a value exists within this Map.
+    **/
+    public function hasValue(value: V) : Bool {
+        for (v in this) if (value == v) return true;
+        return false;
+    }
+    
+    /**
+        The `sideEffect` is executed for every entry in the Map.
+    **/
+    public function forEach(sideEffect: (K, V) -> Void) : Void {
+        for (k => v in this) sideEffect(k, v);
+    }
+
+    /**
+        The `sideEffect` is executed for every entry in the Map. Iteration stops once `sideEffect` returns false.
+        
+        This function returns the number of times `sideEffects` was executed.
+    **/
+    public function forWhile(sideEffect: (K, V) -> Bool) : Int {
+        var i = 0;
+        for (k => v in this) {
+            if (!sideEffect(k, v)) break;
+            ++i;
+        }
+        return i;
     }
 
     /**
         Shallowly converts this Map to an Array.
     **/
-    public function toArray(): Array<V> { // TODO: implement
-        return null;
+    public function toArray(): Array<V> {
+        return [for (v in values()) v];
     }
 
     /**
         Shallowly converts this Map to an Array of key-value pairs.
     **/
-    public function toArrayKV(): Array<{k: K, v: V}> { // TODO: implement
-        return null;
+    public function toArrayKV(): Array<{key: K, value: V}> {
+        return data.copy();
     }
 
     /**
@@ -276,69 +439,33 @@ abstract OrderedMap<K, V>(Array<{k: K, v: V}>) from Array<{k: K, v: V}> {
     /**
         Returns a Sequence of key-value pairs in this Map.
     **/
-    public function toSequenceKV(): Sequence<{k: K, v: V}> { // TODO: implement
+    public function toSequenceKV(): Sequence<{key: K, value: V}> { // TODO: implement
         return null;
     }
 
     /**
-        True if this and the other Map have identical keys and values.
+        Returns a new Sequence of the keys of this Map, discarding values.
     **/
-    public function equals(other: Map<K, V>): Bool { // TODO: implement
-        return null;
-    }
-
-    /**
-        Returns the value associated with the provided key, or None if the Map does not contain this key.
-    **/
-    public function get(key: K): Option<V> { // TODO: implement
-        return null;
-    }
-
-    /**
-        True if a key exists within this Map.
-    **/
-    public function has(key: K): Bool { // TODO: implement
-        return null;
-    }
-
-    /**
-        True if a value exists within this Map.
-    **/
-    public function hasValue(value: V) : Bool {
-        return null;
-    }
-
-
-    /**
-        Returns the first value in the OrderedMap, or None if it is empty.
-    **/
-    public function first() : Option<V> { // TODO: implement
-        return null;
-    }
-
-    /**
-        Returns the last value in the OrderedMap, or None if it is empty.
-    **/
-    public function last() : Option<V> { // TODO: implement
+    public function toSequenceKeys(): Sequence<K> { // TODO: implement
         return null;
     }
 
     /**
         Converts this OrderedMap to a Map.
     **/
-    @:to public function toMap(): Map<K, V> { // TODO: implement
-        return null;
+    public function toMap() { // TODO: implement
+        //return [for (k => v in this) k => v];
     }
     
     /**
-        Converts this Map to a Set, discarding keys. Returns None if values are not hashable.
+        Converts this Map to a Set, discarding keys.
     **/
     public function toSet(): Option<Set<V>> { // TODO: implement
         return null;
     }
 
     /**
-        Converts this map to an OrderedSet, maintaining value order but discarding keys. Returns None if values are not hashable.
+        Converts this map to an OrderedSet, maintaining value order but discarding keys.
     **/
     public function toOrderedSet(): Option<OrderedSet<V>> { // TODO: implement
         return null;
@@ -357,82 +484,10 @@ abstract OrderedMap<K, V>(Array<{k: K, v: V}>) from Array<{k: K, v: V}> {
     }
 
     /**
-        Converts this Collection to a Stack, discarding keys. Returns None if values are not hashable.
+        Converts this Collection to a Stack, discarding keys.
     **/
     public function toStack(): Option<Stack<V>> { // TODO: implement
         return null;
-    }
-
-    /**
-        An iterator of this Map's keys.
-    **/
-    public function keys(): Iterator<K> { // TODO: implement
-        return null;
-    }
-
-    /**
-        An iterator of this Map's keys. Equivalent to `iterator()`.
-    **/
-    public function values(): Iterator<V> { // TODO: implement
-        return null;
-    }
-
-    /**
-        An iterator of this Map's entries as key-value pairs.
-    **/
-    public function entries(): Iterator<{k: K, v: V}> { // TODO: implement
-        return null;
-    }
-
-    /**
-        Returns a new Sequence of the keys of this Map, discarding values.
-    **/
-    public function toSequenceKeys(): Sequence<K> { // TODO: implement
-        return null;
-    }
-
-    /**
-        The `sideEffect` is executed for every entry in the Map.
-    **/
-    public function forEach(sideEffect: (K, V) -> Void) : Void {
-        var map : OrderedMap<K, V> = this;
-        for (k => v in map) sideEffect(k, v);
-    }
-
-    /**
-        The `sideEffect` is executed for every entry in the Map. Iteration stops once `sideEffect` returns false.
-        
-        This function returns the number of times `sideEffects` was executed.
-    **/
-    public function forWhile(sideEffect: (K, V) -> Bool) : Int {
-        var map : OrderedMap<K, V> = this, i = 0;
-        for (k => v in map) {
-            sideEffect(k, v);
-            ++i;
-        }
-        return i;
-    }
-
-    public function iterator() : Iterator<V> {
-        return null;
-    }
-
-    public function keyValueIterator() : KeyValueIterator<K, V> {
-        return null;
-    }
-
-    public function toString() : String {
-        var result = "OrderedMap {";
-        var map : OrderedMap<K, V> = this;
-        var cut = false;
-
-        for (k => v in map) {
-            cut = true;
-            result += ' $k: $v,';
-        }
-
-        if (cut) result = result.substr(0, result.length - 1);
-        return result + " }";
     }
 
 }

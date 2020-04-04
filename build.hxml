@@ -1,5 +1,7 @@
 -cp src
 -D analyzer-optimize
 -D dce=no
--main Main
+-main wavemode.immutable.test.AllTests
+-lib buddy
+-lib tink_macro
 --interp

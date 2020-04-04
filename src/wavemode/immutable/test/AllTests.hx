@@ -6,6 +6,8 @@
  *
  */
 
-package wavemode.immutable;
+package wavemode.immutable.test;
 
-abstract Stack<T>(Array<T>) {}
+import buddy.Buddy;
+
+class AllTests implements Buddy<[OrderedMapTest, MapTest, OrderedSetTest, SetTest]> {}
