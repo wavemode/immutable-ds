@@ -12,9 +12,6 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 #end
 
-import haxe.ds.Option;
-using haxe.EnumTools.EnumValueTools;
-
 class Map<K, V> {
 
     private var data : Array<{key: K, value: V}>;
@@ -127,6 +124,12 @@ class Map<K, V> {
     function get_length() return data.length;
 
     /**
+        True if the Map is empty.
+    **/
+    public function empty() : Bool
+        return length == 0;
+
+    /**
         Returns a new Map containing the new (key, value) pair. If an equivalent key already 
         exists in this Map, it will be replaced.
     **/
@@ -152,10 +155,10 @@ class Map<K, V> {
         This is equivalent to calling `set()` for each pair individually, but potentially more
         efficient.
     **/
-    public function setAll(keys: Iterable<K>, values: Iterable<V>): Map<K, V> {
-        var map = this, it = values.iterator();
-        for (key in keys) {
-            map = map.set(key, it.next());
+    public function setEach(keys: Iterable<K>, values: Iterable<V>): Map<K, V> {
+        var map = this, keyIter = keys.iterator(), valIter = values.iterator();
+        while (keyIter.hasNext() && valIter.hasNext()) {
+            map = map.set(keyIter.next(), valIter.next());
         }
         return map;
     }
@@ -196,7 +199,7 @@ class Map<K, V> {
         This is equivalent to calling `remove()` for each key individually, but potentially more
         efficient.
     **/
-    public function removeAll(keys: Iterable<K>) : Map<K, V> {
+    public function removeEach(keys: Iterable<K>) : Map<K, V> {
         var map = this;
         for (key in keys) {
             map = map.remove(key);
@@ -210,7 +213,7 @@ class Map<K, V> {
         This is equivalent to calling `remove()` for each value individually, but potentially more
         efficient.
     **/
-    public inline function removeAllValues(values : Iterable<V>): Map<K, V> {
+    public inline function removeEachValue(values : Iterable<V>): Map<K, V> {
         var map = this;
         for (value in values) map = map.removeValue(value);
         return map;
@@ -240,6 +243,64 @@ class Map<K, V> {
             i++;
         }
         return fromArray(arr);
+    }
+
+    /**
+        Returns a new Map having updated the values at the keys in `keys` with the return values of calling `updater` with the existing values.
+        If any key in `keys` does not exist in the map, it is ignored.
+
+        Equivalent to calling `update()` for each key individually, but potentially more efficient.
+    **/
+    public function updateEach(keys: Iterable<K>, updater: V -> V): Map<K, V> {
+        var map = this;
+        for (key in keys) {
+            map = map.update(key, updater);
+        } 
+        return map;
+    }
+
+    /**
+        Returns a new Map having every instance of the given value replaced with the value `newVal`.
+
+        If the value does not exist, this function returns the unaltered set.
+    **/
+    public function replace(value: V, newVal : V): Map<K, V> {
+        var i = 0, arr = data.copy();
+        for (k => v in this) {
+            if (value == v) {
+                arr[i] = {key: k, value: newVal};
+            }
+            i++;
+        }
+        return fromArray(arr);
+    }
+
+    /**
+        Returns a new Map having the given values replaced with the values in `newVals`.
+    
+        If any value does not exist, the value is ignored.
+
+        This is equivalent to calling `replace()` for every value individually, but is
+        potentially more efficient, and previous replacements do not affect subsequent
+        ones.
+    **/
+    public function replaceEach(values: Iterable<V>, newVals : Iterable<V>): Map<K, V> {
+        var valIter = values.iterator(), newIter = newVals.iterator(), result = this;
+
+        var merges = [];
+
+        while(valIter.hasNext() && newIter.hasNext()) {
+
+            var oldVal = valIter.next(), newVal = newIter.next();
+
+            for (key => val in result) {
+                if (val == oldVal) merges.push([{key: key, value: newVal}]);
+            }
+
+        }
+
+        return result.mergeEach(merges.map(fromArray));
+
     }
 
     /**
@@ -273,7 +334,7 @@ class Map<K, V> {
         This is equivalent to calling `merge()` for each map individually, but potentially more
         efficient.
     **/
-    public function mergeAll(others : Iterable<Map<K, V>>, ?mergeFunction : (V, V) -> V) : Map<K, V> { // TODO: implement
+    public function mergeEach(others : Iterable<Map<K, V>>, ?mergeFunction : (V, V) -> V) : Map<K, V> { // TODO: implement
         var result = this;
         for (other in others) result = result.merge(other, mergeFunction);
         return result;
@@ -359,10 +420,11 @@ class Map<K, V> {
     /**
         True if this and the other Map have identical keys and values.
     **/
-    public function equals(other: Map<K, V>): Bool {
+    @:generic
+    public function equals<T:MapType<K, V>>(other: T): Bool {
         if (length != other.length) return false;
         for (key => value in this) {
-            if (!other.get(key).equals(Some(value))) return false;
+            if (!other.get(key).is(value)) return false;
         }
         return true;
     }
@@ -384,6 +446,14 @@ class Map<K, V> {
     **/
     public function has(key: K): Bool {
         return !get(key).equals(None);
+    }
+
+    /**
+        Returns the key of a given value in the map, or None if the value does not exist.
+    **/
+    public function keyOf(value: V): Option<K> {
+        for (k => v in this) if (value == v) return Some(k);
+        return None;
     }
 
     /**
@@ -409,8 +479,8 @@ class Map<K, V> {
     public function forWhile(sideEffect: (K, V) -> Bool) : Int {
         var i = 0;
         for (k => v in this) {
-            if (!sideEffect(k, v)) break;
             ++i;
+            if (!sideEffect(k, v)) break;
         }
         return i;
     }
@@ -491,4 +561,10 @@ class Map<K, V> {
         return null;
     }
 
+}
+
+private typedef MapType<K, V> = {
+    function has(k:K) : Bool;
+    function get(k:K): Option<V>;
+    var length(get, never) : Int;
 }

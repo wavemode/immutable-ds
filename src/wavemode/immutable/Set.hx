@@ -47,12 +47,11 @@ class Set<T> {
 
     /**
         Create a new Set with the values in `arr`.
+        
+        Equivalent to `new Set().addEach(arr)`
     **/
-    public static function fromArray<T>(arr : Array<T>) : Set<T> {
-        var map = new Set();
-        arr.reverse();
-        for (val in arr) map = map.add(val);
-        return map;
+    public static inline function fromArray<T>(arr : Iterable<T>) : Set<T> {
+        return new Set().addEach(arr);
     }
 
     /**
@@ -60,6 +59,12 @@ class Set<T> {
     **/
     public var length(get, never) : Int;
     function get_length() return data.length;
+
+    /**
+        True if the Set is empty.
+    **/
+    public function empty() : Bool
+        return length == 0;
 
     /**
         Returns a new Set containing the new value. If an equivalent value already 
@@ -73,7 +78,9 @@ class Set<T> {
         }
         var arr = data.copy();
         arr.insert(0, val);
-        return fromArray(arr);
+        var set = new Set();
+        set.data = arr;
+        return set;
     }
 
     /**
@@ -83,7 +90,7 @@ class Set<T> {
         This is equivalent to calling `add()` for each value individually, but is potentially more
         efficient.
     **/
-    public function addAll(values: Iterable<T>): Set<T> {
+    public function addEach(values: Iterable<T>): Set<T> {
         var set = this;
         for (val in values) {
             set = set.add(val);
@@ -112,7 +119,7 @@ class Set<T> {
         This is equivalent to calling `remove()` for each value individually, but is potentially more
         efficient.
     **/
-    public function removeAll(values: Iterable<T>) : Set<T> {
+    public function removeEach(values: Iterable<T>) : Set<T> {
         var set = this;
         for (v in values) {
             set = set.remove(v);
@@ -123,25 +130,41 @@ class Set<T> {
     /**
         Returns a new Set containing no keys or values.
     **/
-    public function clear() : Set<T> {
+    public inline function clear() : Set<T> {
         return fromArray([]);
     }
 
     /**
-        Returns a new Set having the given value updated with return value of calling `updater` with the existing value.
-    
-        If `key` does not exist, this function returns the unaltered set.
+        Returns a new Set having the given value replaced with the value `newVal`.
+
+        If the value does not exist, this function returns the unaltered set.
     **/
-    public function update(value: T, updater: T -> T): Set<T> {
+    public function replace(value: T, newVal : T): Set<T> {
         var i = 0, arr = data.copy();
         for (v in this) {
             if (value == v) {
-                arr[i] = updater(arr[i]);
+                arr[i] = newVal;
                 break;
             }
             i++;
         }
         return fromArray(arr);
+    }
+    
+    /**
+        Returns a new Set having the given values replaced with the values in `newVals`.
+    
+        If any value does not exist, the value is ignored.
+
+        This is equivalent to calling `replace()` for every value individually, but is
+        potentially more efficient.
+    **/
+    public function replaceEach(values: Iterable<T>, newVals : Iterable<T>): Set<T> {
+        var valIter = values.iterator(), newIter = newVals.iterator(), result = this;
+        while (valIter.hasNext() && newIter.hasNext()) {
+            result = result.replace(valIter.next(), newIter.next());
+        }
+        return result;
     }
 
     /**
@@ -161,7 +184,7 @@ class Set<T> {
         This is equivalent to calling `union()` for each set individually, but potentially more
         efficient.
     **/
-    public function unionAll(others : Iterable<Iterable<T>>) : Set<T> {
+    public function unionEach(others : Iterable<Iterable<T>>) : Set<T> {
         var result = this;
         for (other in others) result = result.union(other);
         return result;
@@ -170,7 +193,7 @@ class Set<T> {
     /**
         Returns a new Set containing only values that appear in this set and in `other`.
     **/
-    public function intersect(other: Iterable<T>) : Set<T> {
+    public function intersect(other : Iterable<T>) : Set<T> {
         var result = new Set();
         for (v in other) if (has(v)) result = result.add(v);
         return result;
@@ -182,7 +205,7 @@ class Set<T> {
         This is equivalent to calling `intersect()` for each set individually, but potentially more
         efficient.
     **/
-    public function intersectAll(others : Iterable<Iterable<T>>) : Set<T> {
+    public function intersectEach(others : Iterable<Iterable<T>>) : Set<T> {
         var result = this;
         for (other in others) result = result.intersect(other);
         return result;
@@ -203,7 +226,7 @@ class Set<T> {
         This is equivalent to calling `subtract()` for each set individually, but potentially more
         efficient.
     **/
-    public function subtractAll(others : Iterable<Set<T>>) : Set<T> {
+    public function subtractEach(others : Iterable<Set<T>>) : Set<T> {
         var result = this;
         for (other in others) result = result.subtract(other);
         return result;
@@ -226,19 +249,21 @@ class Set<T> {
     /**
         An iterator of this Set's keys. Equivalent to `iterator()`.
     **/
-    public function values(): Iterator<T> {
+    public inline function values(): Iterator<T> {
         return iterator();
     }
 
     /**
-        True if this and the other Set have identical values.
+        True if this and the other object have identical values.
     **/
-    public function equals(other: Set<T>): Bool {
-        if (length != other.length) return false;
-        for (value in this) {
-            if (!other.has(value)) return false;
+    public function equals(other: Iterable<T>): Bool {
+        var i = 0;
+        for (value in other) {
+            if (!has(value)) return false;
+            ++i;
         }
-        return true;
+        if (i != length) return false;
+        else return true;
     }
 
     /**
@@ -268,8 +293,8 @@ class Set<T> {
     public function forWhile(sideEffect: T -> Bool) : Int {
         var i = 0;
         for (v in this) {
-            if (!sideEffect(v)) break;
             ++i;
+            if (!sideEffect(v)) break;
         }
         return i;
     }
@@ -282,16 +307,9 @@ class Set<T> {
     }
 
     /**
-        Returns a Sequence of values in this Map.
+        Returns a Sequence of values in this Set.
     **/
     public function toSequence(): Sequence<T> { // TODO: implement
-        return null;
-    }
-    
-    /**
-        Converts this Map to a Set.
-    **/
-    public function toSet(): Set<T> { // TODO: implement
         return null;
     }
 

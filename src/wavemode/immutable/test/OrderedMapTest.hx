@@ -8,12 +8,6 @@
 
 package wavemode.immutable.test;
 
-import haxe.ds.Option;
-import buddy.BuddySuite;
-
-using buddy.Should;
-import buddy.CompilationShould;
-
 class OrderedMapTest extends BuddySuite {
 	public function new() {
 
@@ -123,7 +117,23 @@ class OrderedMapTest extends BuddySuite {
 
 			});
 
-		});
+        });
+        
+        describe("empty", {
+
+            it("should be true when the map is empty", {
+
+                new OrderedMap().empty().should.be(true);
+
+            });
+
+            it("should be false when the map is not empty", {
+
+                new OrderedMap().set(1, 2).empty().should.be(false);
+
+            });
+
+        });
 
 		describe("set", {
 
@@ -157,14 +167,14 @@ class OrderedMapTest extends BuddySuite {
 
 		});
 
-		describe("setAll", {
+		describe("setEach", {
 
 			var one, two;
 
 			beforeEach({
 
 				one = OrderedMap.from({a: 4, b: 5, c: 6});
-				two = one.setAll(["c", "d"], [7, 8]);
+				two = one.setEach(["c", "d"], [7, 8]);
 
 			});
 
@@ -238,14 +248,14 @@ class OrderedMapTest extends BuddySuite {
 
 		});
 
-		describe("removeAll", {
+		describe("removeEach", {
 
 			var one, two;
 
 			beforeEach({
 
 				one = OrderedMap.from({a: 4, b: 5, c: 6});
-				two = one.removeAll(["a", "c"]);
+				two = one.removeEach(["a", "c"]);
 
 			});
 
@@ -263,14 +273,14 @@ class OrderedMapTest extends BuddySuite {
 
 		});
 
-		describe("removeAllValues", {
+		describe("removeEachValue", {
 
 			var one, two;
 
 			beforeEach({
 
 				one = OrderedMap.from({a: 4, b: 5, c: 6});
-				two = one.removeAllValues([4, 5]);
+				two = one.removeEachValue([4, 5]);
 
 			});
 			
@@ -342,6 +352,118 @@ class OrderedMapTest extends BuddySuite {
 
         });
 
+		describe("updateEach", {
+
+            var one, two, three;
+
+            beforeEach({
+                one = OrderedMap.from({a: 4, b: 5, c: 6});
+                two = one.updateEach(["a", "b"], (x) -> x * 2);
+                three = one.updateEach(["d", "e"], (x) -> x * 2);
+            });
+
+            it("should update the value of the keys", {
+
+                two.equals(OrderedMap.from({a: 8, b: 10, c: 6})).should.be(true);
+
+            });
+
+            it("should not modify the original", {
+
+                one.equals(OrderedMap.from({a: 4, b: 5, c: 6})).should.be(true);
+
+            });
+
+            it("should do nothing if the key does not exist", {
+
+                three.equals(one).should.be(true);
+
+            });
+
+        });
+        
+		describe("replace", {
+
+            var one, two, three;
+
+            beforeEach({
+                one = OrderedMap.from({a: 4, b: 5, c: 4});
+                two = one.replace(4, 10);
+                three = one.replace(9, 10);
+            });
+
+            it("should replace every occurrence of the given value", {
+
+                two.equals(OrderedMap.from({a: 10, b: 5, c: 10})).should.be(true);
+
+            });
+
+            it("should not modify the original", {
+
+                one.equals(OrderedMap.from({a: 4, b: 5, c: 4})).should.be(true);
+
+            });
+
+            it("should do nothing if the value does not exist", {
+
+                three.equals(one).should.be(true);
+
+            });
+
+        });
+        
+		describe("replaceEach", {
+
+            var one, two, three;
+
+            beforeEach({
+                one = OrderedMap.from({a: 4, b: 5, c: 4});
+                two = one.replaceEach([4, 5], [5, 10]);
+                three = one.replaceEach([9, 10], [10, 11]);
+            });
+
+            it("should replace every occurrence of the given values", {
+
+                two.equals(OrderedMap.from({a: 5, b: 10, c: 5})).should.be(true);
+
+            });
+
+            it("should not modify the original", {
+
+                one.equals(OrderedMap.from({a: 4, b: 5, c: 4})).should.be(true);
+
+            });
+
+            it("should do nothing if the values do not exist", {
+
+                three.equals(one).should.be(true);
+
+            });
+
+        });
+
+        describe("keyOf", {
+
+            var one;
+
+            beforeEach({
+                one = OrderedMap.from({a: 4, b: 5, c: 4});
+            });
+
+            it("should return the key of the given value", {
+
+                one.keyOf(4).should.equal(Some("a"));
+
+            });
+
+            it("should return None for nonexistent values", {
+
+                one.keyOf(20).should.equal(None);
+
+            });
+
+        });
+
 		describe("merge", {
 
             var one, two, three, four;
@@ -376,7 +498,7 @@ class OrderedMapTest extends BuddySuite {
 
         });
 
-		describe("mergeAll", {
+		describe("mergeEach", {
 
             var one, two, three, four, five;
 
@@ -386,8 +508,8 @@ class OrderedMapTest extends BuddySuite {
                 one = OrderedMap.from({a: 10, b: 20, c: 30 });
                 two = OrderedMap.from({b: 40, a: 50, d: 60 });
                 three = OrderedMap.from({d: 80, e: 70, f:100 });
-                four = one.mergeAll([two, three]);
-                five = one.mergeAll([two, three], (oldVal, newVal) -> oldVal + newVal);
+                four = one.mergeEach([two, three]);
+                five = one.mergeEach([two, three], (oldVal, newVal) -> oldVal + newVal);
 
             });
 
@@ -872,7 +994,7 @@ class OrderedMapTest extends BuddySuite {
             it("should stop execution when function returns false", {
 
                 var i = 0;
-                one.forWhile((k, v) -> ++i < 2);
+                one.forWhile((k, v) -> ++i < 2).should.be(2);
                 i.should.be(2);
 
             });
@@ -880,7 +1002,7 @@ class OrderedMapTest extends BuddySuite {
             it("should behave normally for the empty map", {
 
                 var i = 0;
-                new OrderedMap().forWhile((k, v) -> ++i < 2);
+                new OrderedMap().forWhile((k, v) -> ++i < 2).should.be(0);
                 i.should.be(0);
 
             });

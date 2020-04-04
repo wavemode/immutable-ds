@@ -3,5 +3,4 @@
 -D dce=no
 -main wavemode.immutable.test.AllTests
 -lib buddy
--lib tink_macro
 --interp

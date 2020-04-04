@@ -47,11 +47,11 @@ class OrderedSet<T> {
 
     /**
         Create a new Set with the values in `arr`.
+
+        Equivalent to `new OrderedSet().addEach(arr)`
     **/
-    public static function fromArray<T>(arr : Array<T>) : OrderedSet<T> {
-        var map = new OrderedSet();
-        for (val in arr) map = map.add(val);
-        return map;
+    public static inline function fromArray<T>(arr : Array<T>) : OrderedSet<T> {
+        return new OrderedSet().addEach(arr);
     }
 
     /**
@@ -59,6 +59,12 @@ class OrderedSet<T> {
     **/
     public var length(get, never) : Int;
     function get_length() return data.length;
+
+    /**
+        True if the Set is empty.
+    **/
+    public function empty() : Bool
+        return length == 0;
 
     /**
         Returns a new Set containing the new value. If an equivalent value already 
@@ -72,7 +78,9 @@ class OrderedSet<T> {
         }
         var arr = data.copy();
         arr.push(val);
-        return fromArray(arr);
+        var set = new OrderedSet();
+        set.data = arr;
+        return set;
     }
 
     /**
@@ -82,7 +90,7 @@ class OrderedSet<T> {
         This is equivalent to calling `add()` for each value individually, but is potentially more
         efficient.
     **/
-    public function addAll(values: Iterable<T>): OrderedSet<T> {
+    public function addEach(values: Iterable<T>): OrderedSet<T> {
         var set = this;
         for (val in values) {
             set = set.add(val);
@@ -111,7 +119,7 @@ class OrderedSet<T> {
         This is equivalent to calling `remove()` for each value individually, but is potentially more
         efficient.
     **/
-    public function removeAll(values: Iterable<T>) : OrderedSet<T> {
+    public function removeEach(values: Iterable<T>) : OrderedSet<T> {
         var set = this;
         for (v in values) {
             set = set.remove(v);
@@ -127,20 +135,36 @@ class OrderedSet<T> {
     }
 
     /**
-        Returns a new Set having the given value updated with return value of calling `updater` with the existing value.
-    
-        If `key` does not exist, this function returns the unaltered set.
+        Returns a new Set having the given value replaced with the value `newVal`.
+
+        If the value does not exist, this function returns the unaltered set.
     **/
-    public function update(value: T, updater: T -> T): OrderedSet<T> {
+    public function replace(value: T, newVal : T): OrderedSet<T> {
         var i = 0, arr = data.copy();
         for (v in this) {
             if (value == v) {
-                arr[i] = updater(arr[i]);
+                arr[i] = newVal;
                 break;
             }
             i++;
         }
         return fromArray(arr);
+    }
+
+    /**
+        Returns a new Set having the given values replaced with the values in `newVals`.
+    
+        If any value does not exist, the value is ignored.
+
+        This is equivalent to calling `replace()` for every value individually, but is
+        potentially more efficient.
+    **/
+    public function replaceEach(values: Iterable<T>, newVals : Iterable<T>): OrderedSet<T> {
+        var valIter = values.iterator(), newIter = newVals.iterator(), result = this;
+        while (valIter.hasNext() && newIter.hasNext()) {
+            result = result.replace(valIter.next(), newIter.next());
+        }
+        return result;
     }
 
     /**
@@ -160,7 +184,7 @@ class OrderedSet<T> {
         This is equivalent to calling `union()` for each set individually, but potentially more
         efficient.
     **/
-    public function unionAll(others : Iterable<Iterable<T>>) : OrderedSet<T> {
+    public function unionEach(others : Iterable<Iterable<T>>) : OrderedSet<T> {
         var result = this;
         for (other in others) result = result.union(other);
         return result;
@@ -176,12 +200,12 @@ class OrderedSet<T> {
     }
 
     /**
-        Returns a new Set containing only values that appear in this set and in every set in `others`.
+        Returns a new Set containing only values that appear in this set and in every object in `others`.
 
         This is equivalent to calling `intersect()` for each set individually, but potentially more
         efficient.
     **/
-    public function intersectAll(others : Iterable<Iterable<T>>) : OrderedSet<T> {
+    public function intersectEach(others : Iterable<Iterable<T>>) : OrderedSet<T> {
         var result = this;
         for (other in others) result = result.intersect(other);
         return result;
@@ -202,7 +226,7 @@ class OrderedSet<T> {
         This is equivalent to calling `subtract()` for each set individually, but potentially more
         efficient.
     **/
-    public function subtractAll(others : Iterable<OrderedSet<T>>) : OrderedSet<T> {
+    public function subtractEach(others : Iterable<OrderedSet<T>>) : OrderedSet<T> {
         var result = this;
         for (other in others) result = result.subtract(other);
         return result;
@@ -230,14 +254,17 @@ class OrderedSet<T> {
     }
 
     /**
-        True if this and the other Set have identical values.
+        True if this and the other object have identical values.
     **/
-    public function equals(other: OrderedSet<T>): Bool {
-        if (length != other.length) return false;
-        for (value in this) {
-            if (!other.has(value)) return false;
+    @:generic
+    public function equals<U:Iterable<T>>(other: U): Bool {
+        var i = 0;
+        for (value in other) {
+            if (!has(value)) return false;
+            ++i;
         }
-        return true;
+        if (i != length) return false;
+        else return true;
     }
 
     /**
@@ -267,8 +294,8 @@ class OrderedSet<T> {
     public function forWhile(sideEffect: T -> Bool) : Int {
         var i = 0;
         for (v in this) {
-            if (!sideEffect(v)) break;
             ++i;
+            if (!sideEffect(v)) break;
         }
         return i;
     }
@@ -281,16 +308,9 @@ class OrderedSet<T> {
     }
 
     /**
-        Returns a Sequence of values in this Map.
+        Returns a Sequence of values in this Set.
     **/
     public function toSequence(): Sequence<T> { // TODO: implement
-        return null;
-    }
-    
-    /**
-        Converts this Map to a Set.
-    **/
-    public function toSet(): Set<T> { // TODO: implement
         return null;
     }
 
