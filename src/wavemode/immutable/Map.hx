@@ -6,6 +6,9 @@
  *
  */
 
+ 
+// TODO: array index syntax
+
 package wavemode.immutable;
 #if macro
 import haxe.macro.Context;

@@ -6,6 +6,10 @@
  *
  */
 
+
+// TODO: fromArray for iterable
+// TODO: subset
+
 package wavemode.immutable;
 
 class OrderedSet<T> {
