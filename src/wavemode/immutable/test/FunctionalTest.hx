@@ -8,6 +8,11 @@
 
 package wavemode.immutable.test;
 
-import buddy.Buddy;
+import buddy.BuddySuite;
+import haxe.ds.Option;
+using buddy.Should;
 
-class AllTests implements Buddy<[OrderedMapTest, MapTest, OrderedSetTest, SetTest, ListTest, StackTest]> {}
+class FunctionalTest extends BuddySuite {
+    public function new() {
+    }
+}

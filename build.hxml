@@ -1,6 +1,8 @@
 -cp src
 -D analyzer-optimize
 -D dce=no
+-D no-deprecation-warnings
 -main wavemode.immutable.test.AllTests
 -lib buddy
+-lib stdlib
 --interp
