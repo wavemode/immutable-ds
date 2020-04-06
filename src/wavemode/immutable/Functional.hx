@@ -3,6 +3,12 @@ package wavemode.immutable;
 import haxe.ds.Option;
 import stdlib.*;
 
+#if macro
+import haxe.macro.Expr;
+import haxe.macro.Context;
+using tink.MacroApi;
+#end
+
 // TODO: Iterator to Sequence conversion
 
 class Functional {
@@ -19,11 +25,11 @@ class Functional {
 				throw new Exception("attempted to unwrap None");
 		}
 	}
-
+	
 	/**
 		Returns true if the Option<T> object is null or None.
 	**/
-	public static inline function isEmpty<T>(opt:Option<T>):Bool {
+	public static inline function empty<T>(opt:Option<T>):Bool {
 		if (opt == null)
 			return true;
 		switch opt {
@@ -39,9 +45,9 @@ class Functional {
 	**/
 	public static inline function equals<T>(opt1:Option<T>, opt2:Option<T>) {
 		if (opt1 == null)
-			return isEmpty(opt2);
+			return empty(opt2);
 		if (opt2 == null)
-			return isEmpty(opt1);
+			return empty(opt1);
 		switch opt1 {
 			case Some(v1):
 				{

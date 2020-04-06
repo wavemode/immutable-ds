@@ -355,7 +355,7 @@ class List<T> {
 
         Equivalent to `new List().concatEach(list.map(mapper))`
     **/
-	public function mapFlat<N, M:Iterable<N>>(mapper:T->M):List<N> {
+	public function flatMap<N, M:Iterable<N>>(mapper:T->M):List<N> {
 		return new List().concatEach(map(mapper));
 	}
 
@@ -544,6 +544,20 @@ class List<T> {
 		}
 		return fromArray(result);
 
+	}
+
+	/**
+		Returns the first element of the List, or None if the List is empty.
+	**/
+	public function first():Option<T> {
+		return get(0);
+	}
+
+	/**
+		Returns the last element of the List, or None if the List is empty.
+	**/
+	public function last():Option<T> {
+		return get(length-1);
 	}
 
 	/**

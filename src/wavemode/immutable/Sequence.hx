@@ -15,47 +15,155 @@ import stdlib.Exception;
 
 class Sequence<T> {
 
+    private var length:Option<Int>;
+    private var cache:List<T>;
+
+    private dynamic function _hasNext():Bool {
+        return false;
+    }
+
+    private dynamic function _next():T {
+        throw new Exception("attempt to read from empty Iterator");
+    }
+
+    private static inline function fromFns<T>(hn, n):Sequence<T> {
+        var seq = new Sequence();
+        seq._hasNext = hn;
+        seq._next = n;
+        return seq;
+    }
+
+    public function toString():String {
+        var result = "Sequence {";
+        var cut = false;
+
+        for (v in this) {
+            cut = true;
+            result += ' $v,';
+        }
+
+        if (cut)
+            result = result.substr(0, result.length - 1);
+        return result + " }";
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////// API
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public inline function new(hasNext:()->Bool, next:()->T) {
-        hn = hasNext;
-        n = next;
+    /**
+        Create a new empty Sequence.
+    **/
+    public inline function new() {
+        cache = new List();
+        length = None;
     }
 
+    /**
+        Create a new Sequence from an Iterable.
+    **/
     public static inline function from<T>(iter:Iterable<T>):Sequence<T> {
         var it = iter.iterator();
-        return new Sequence(it.hasNext, it.next);
+        return fromFns(it.hasNext, it.next);
     }
 
+    /**
+        Create a new Sequence from an Iterator.
+    **/
     public static inline function fromIterator<T>(it:Iterator<T>):Sequence<T> {
-        return new Sequence(it.hasNext, it.next);
+        var seq = new Sequence();
+        return fromFns(it.hasNext, it.next);
     }
 
-    private final hn : () -> Bool;
-    private final n : () -> T;
-
     /**
-        Returns true if this Sequence still has values.
+        Returns the value at position `index` in this Sequence, or None if the index is out of bounds.
+
+        Calls to `get()` are cached internally, as the data in the underlying iterator is expected to be immutable.
     **/
-    public function hasNext() : Bool {
-        return hn();
+    public function get(index:Int):Option<T> {
+
+        if (index < 0) return None;
+
+        if (cache.length > index)
+            return Some(cache.getValue(index));
+
+        while (_hasNext()) {
+            cache = cache.push(_next());
+            if (cache.length > index)
+                return Some(cache.getValue(index));
+        }
+
+        return None;
+
     }
 
     /**
-        Returns the next value in the Sequence. Throws an Exception if the Sequence is out of values.
+        Unsafe variant of `get()`. Returns the value at position `index` in this Sequence, or throws an Exception
+        if the index is out of bounds.
+
+        Calls to `getValue()` are cached internally, as the data in the underlying iterator is expected to be immutable.
     **/
-    public function next() : T {
-        if (!hn()) throw new Exception("attempted to read value from empty Sequence");
-        return n();
+    public function getValue(index:Int):T {
+
+        if (index < 0) throw new Exception("index $index out of bounds for Sequence");
+
+        if (cache.length > index)
+            return cache.getValue(index);
+
+        while (_hasNext()) {
+            cache = cache.push(_next());
+            if (cache.length > index)
+                return cache.getValue(index);
+        }
+
+        throw new Exception("index $index out of bounds for Sequence");
+
     }
 
     /**
-        Returns a new Sequence with each element passed through `mapper`
+        Returns the first value of the Sequence, or None if the Sequence is empty.
+    **/
+    public inline function peek():Option<T> {
+        return get(0);
+    }
+
+    /**
+        Unsafe variant of `peek()`. Returns the first value of the Sequence, or throws
+        an Exception if the Sequence is empty.
+    **/
+    public inline function peekValue():T {
+        var val = get(0);
+        if (val.empty()) throw new Exception("attempt to peek empty Sequence");
+        return val.unwrap();
+    }
+
+    /**
+        Returns a new Sequence with each element passed through `mapper`.
     **/
     public function map<M>(mapper:T->M):Sequence<M> {
-        return new Sequence(hasNext, () -> mapper(next()));
+
+        var index : Int = 0;
+        var nextVal : Option<T> = None;
+
+        function getNext():Void
+            if (nextVal.empty())
+                nextVal = get(index++);
+
+        function hasNext():Bool {
+            getNext();
+            return !nextVal.empty();
+        }
+
+        function next():M {
+            getNext();
+            if (nextVal.empty()) throw new Exception("attempt to read from empty Iterator");
+            var val = mapper(nextVal.unwrap());
+            nextVal = None;
+            return val; 
+        }
+
+        return fromFns(hasNext, next);
+
     }
 
     /**
@@ -63,14 +171,110 @@ class Sequence<T> {
         then returns the flattened result.
     **/
     public function flatMap<N, M:Iterable<N>>(mapper:T->M):Sequence<N> {
-        return null;
+
+        var index : Int = 0;
+        var nextVal : Option<T> = None;
+        var nextIter : Option<Iterator<N>> = None;
+        var nextElement : Option<N> = None;
+
+        function getNextElement():Void {
+
+            while (true) {
+                if (nextIter.empty() || !nextIter.unwrap().hasNext()) {
+                    nextVal = get(index++);
+                    if (nextVal.empty()) {
+                        return;
+                    } else {
+                        nextIter = Some(mapper(nextVal.unwrap()).iterator());
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            if (nextElement.empty())
+                nextElement = Some(nextIter.unwrap().next());
+
+        }
+
+        function hasNext():Bool {
+            getNextElement();
+            return !nextElement.empty();
+        }
+
+        function next():N {
+            getNextElement();
+            if (nextElement.empty()) throw new Exception("attempt to read from empty Iterator");
+            var val = nextElement;
+            nextElement = None;
+            return val.unwrap();
+        }
+
+        return fromFns(hasNext, next);
+
     }
-    public function filter():Sequence<T> {
-        return null;
+
+    /**
+        Returns a new Sequence with values not satisfying `predicate` removed.
+    **/
+    public function filter(predicate:T->Bool):Sequence<T> {
+
+        var index : Int = 0;
+        var nextVal : Option<T> = None;
+
+        function getNext():Void
+            while (true)
+                if (nextVal.empty()) {
+                    nextVal = get(index++);
+                    if (nextVal.empty()) break;
+                    else if (!predicate(nextVal.unwrap()))
+                        nextVal = None;
+                } else break;
+
+        function hasNext():Bool {
+            getNext();
+            return !nextVal.empty();
+        }
+
+        function next():T {
+            getNext();
+            if (nextVal.empty()) throw new Exception("attempt to read from empty Iterator");
+            var val = nextVal.unwrap();
+            nextVal = None;
+            return val; 
+        }
+
+        return fromFns(hasNext, next);
+
     }
+
+    /**
+        Returns a new Sequence in reverse order.
+    **/
     public function reverse():Sequence<T> {
-        return null;
+
+        var index : Int = -2;
+
+        // defer calling count(), since it will evaluate the entire sequence
+        function getNext():Void {
+            if (index == -2)
+                index = count() - 1;
+        }
+
+        function hasNext():Bool {
+            getNext();
+            return index >= 0;
+        }
+
+        function next():T {
+            getNext();
+            return getValue(index--);
+        }
+
+        return fromFns(hasNext, next);
+
     }
+
     public function sort():Sequence<T> {
         return null;
     }
@@ -140,28 +344,40 @@ class Sequence<T> {
     public function equals():Sequence<T> {
         return null;
     }
-    public function get():Sequence<T> {
-        return null;
-    }
-    public function getValue():Sequence<T> {
-        return null;
-    }
     public function every():Sequence<T> {
         return null;
     }
     public function some():Sequence<T> {
         return null;
     }
-    public function empty():Sequence<T> {
-        return null;
+
+    /**
+        Returns true if this Sequence is empty.
+    **/
+    public function empty():Bool {
+        return get(0).empty();
     }
-    public function count():Sequence<T> {
-        return null;
+
+    /**
+        Counts the number of elements in the Sequence. This iterates over and caches
+        every value in the Sequence.
+    **/
+    public function count():Int {
+        if (!length.empty())
+            return length.unwrap();
+        var i = 0, result = get(i);
+        while (!result.empty()) result = get(++i);
+        length = Some(i);
+        return i;
     }
+
     public function find() {
         return null;
     }
     public function findWhere() {
+        return null;
+    }
+    public function has() {
         return null;
     }
     public function toArray():Sequence<T> {
@@ -189,7 +405,36 @@ class Sequence<T> {
         return null;
     }
     public function iterator():Iterator<T> {
-        return this;
+
+        var index : Int = 0;
+        var nextVal : Option<T> = None;
+
+        function getNext():Void
+            if (nextVal.empty())
+                nextVal = get(index++);
+
+        function hasNext():Bool {
+            getNext();
+            return !nextVal.empty();
+        }
+
+        function next():T {
+            getNext();
+            if (nextVal.empty()) throw new Exception("attempt to read from empty Iterator");
+            var val = nextVal.unwrap();
+            nextVal = None;
+            return val; 
+        }
+
+        return { hasNext: hasNext, next: next };
+
     }
+
+}
+
+private class SequenceIterator<T> {
+
+    private var sequence:Sequence<T>;
+
 
 }
