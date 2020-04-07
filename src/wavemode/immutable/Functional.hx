@@ -1,84 +1,57 @@
 package wavemode.immutable;
 
-import haxe.ds.Option;
 import stdlib.*;
 
-#if macro
-import haxe.macro.Expr;
-import haxe.macro.Context;
-using tink.MacroApi;
-#end
-
 // TODO: Iterator to Sequence conversion
+// TODO: document and test
 
 class Functional {
+
 	/**
-		Unwrap an Option<T>. Throws an Exception if the object is null or None.
+		Unwrap a Null<T>. Throws an Exception if the object is null.
 	**/
-	public static inline function unwrap<T>(opt:Option<T>):T {
-		if (opt == null)
+	public static inline function sure<T>(value:Null<T>):T
+		if (value == null)
 			throw new Exception("attempted to unwrap null");
-		switch opt {
-			case Some(v):
-				return v;
-			case None:
-				throw new Exception("attempted to unwrap None");
-		}
-	}
+		else
+			return @:nullSafety(Off) (value:T);
+
+	/**
+		Returns an unwrapped Null<T> object or a default alternative if
+		the object is null.
+	**/
+	public static function or<T>(value:Null<T>, defaultValue:T):T
+		if (value == null)
+			return defaultValue;
+		else
+			return @:nullSafety(Off) (value:T);
 	
-	/**
-		Returns true if the Option<T> object is null or None.
-	**/
-	public static inline function empty<T>(opt:Option<T>):Bool {
-		if (opt == null)
-			return true;
-		switch opt {
-			case Some(v):
-				return false;
-			case None:
-				return true;
-		}
-	}
 
 	/**
-		Returns true if two Option<T> objects are equivalent (both empty, or values equal)
+		Returns true if the Null<T> object is null.
 	**/
-	public static inline function equals<T>(opt1:Option<T>, opt2:Option<T>) {
-		if (opt1 == null)
-			return empty(opt2);
-		if (opt2 == null)
-			return empty(opt1);
-		switch opt1 {
-			case Some(v1):
-				{
-					switch opt2 {
-						case Some(v2): return v1 == v2;
-						case None: return false;
-					}
-				}
-			case None:
-				{
-					switch opt2 {
-						case Some(v2): return false;
-						case None: return true;
-					}
-				}
-		}
-	}
+	public static inline function empty<T>(value:Null<T>):Bool
+		return value == null;
 
 	/**
-		Returns true if the Option<T> object contains the given value.
+		Returns true if two Null<T> objects are equivalent (both empty, or values equal)
 	**/
-	public static inline function is<T>(opt:Option<T>, value:T):Bool {
-		if (opt == null)
+	public static inline function equals<T>(value1:Null<T>, value2:Null<T>):Bool
+		return if (empty(value1))
+			empty(value2);
+		else if (empty(value2))
+			empty(value1);
+		else
+			value1 == value2;
+
+	/**
+		Returns true if the Null<T> object contains the given value.
+	**/
+	public static inline function is<T>(value1:Null<T>, value2:T):Bool
+		if (value1 == null)
 			return false;
-		switch opt {
-			case Some(v):
-				return value == v;
-			case None:
-				return false;
-		}
-	}
+		else
+			return value1 == value2;
 
 	/**
 		Returns the inverse of a predicate (i.e. x -> !pred(x))
@@ -90,53 +63,56 @@ class Functional {
 	/**
 		Returns the conjunction of the predicates (i.e. x -> pred1(x) && pred2(x))
 	**/
-	public static inline function conj<T>(pred1:T->Bool, pred2:T->Bool) {
+	public static inline function conj<T>(pred1:T->Bool, pred2:T->Bool)
 		return x -> pred1(x) && pred2(x);
-	}
 
 	/**
 		Returns an iterator from `start` up to and including `end`.
 	**/
-	public static inline function upto(start:Int, end:Int):Iterator<Int> {
+	public static inline function upto(start:Int, end:Int):Iterator<Int>
 		return {
 			hasNext: () -> start <= end,
 			next: () -> start++
 		};
-	}
+
 
 	/**
 		Returns an iterator from `start` down to and including `end`.
 	**/
-	public static inline function downto(start:Int, end:Int):Iterator<Int> {
+	public static inline function downto(start:Int, end:Int):Iterator<Int>
 		return {
 			hasNext: () -> start >= end,
 			next: () -> start--
 		};
-	}
 
 	/**
 		Returns an iterator from `start` up to but not including `end`.
 	**/
-	public static inline function below(start:Int, end:Int):Iterator<Int> {
+	public static inline function below(start:Int, end:Int):Iterator<Int>
 		return {
 			hasNext: () -> start < end,
 			next: () -> start++
 		};
-	}
 
 	/**
 		Returns an iterator from `start` down to but not including `end`.
 	**/
-	public static inline function above(start:Int, end:Int):Iterator<Int> {
+	public static inline function above(start:Int, end:Int):Iterator<Int>
 		return {
 			hasNext: () -> start > end,
 			next: () -> start--
 		};
-	}
 
 	/**
 		Returns conversion from an Iterator to an Iterable.
 	**/
-	public static inline function iterable<T>(iter:Iterator<T>):Iterable<T> return { iterator: () -> iter };
+	public static inline function iterable<T>(iter:Iterator<T>):Iterable<T>
+		return { iterator: () -> iter };
+
+	/**
+		Returns conversion from an Iterator to a Sequence.
+	**/
+	public static inline function seq<T>(iter:Iterator<T>):Sequence<T>
+		return Sequence.fromIterator(iter);
 
 }

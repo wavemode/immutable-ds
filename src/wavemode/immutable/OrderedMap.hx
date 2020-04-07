@@ -15,7 +15,6 @@ import haxe.macro.Expr;
 #end
 
 using wavemode.immutable.Functional;
-import haxe.ds.Option;
 import stdlib.Exception;
 
 // TODO: make all map parameters generic
@@ -329,12 +328,11 @@ class OrderedMap<K, V> {
 	public function merge(other:OrderedMap<K, V>, ?mergeFunction:(V, V) -> V):OrderedMap<K, V> {
 		var result = this;
 		for (k => v1 in other) {
-			switch get(k) {
-				case Some(v2) if (mergeFunction != null):
-					result = result.set(k, mergeFunction(v2, v1));
-				default:
-					result = result.set(k, v1);
-			}
+			var v2 = get(k);
+			if (v2 == null || mergeFunction == null)
+				result = result.set(k, v1);
+			else
+				result = result.set(k, mergeFunction(v2.sure(), v1));
 		}
 		return result;
 	}
@@ -448,15 +446,15 @@ class OrderedMap<K, V> {
 	}
 
 	/**
-		Returns the value associated with the provided key, or None if the Map does not contain this key.
+		Returns the value associated with the provided key, or null if the Map does not contain this key.
 	**/
-	public function get(key:K):Option<V> {
+	public function get(key:K):Null<V> {
 		for (k => v in this) {
 			if (key == k) {
-				return Some(v);
+				return v;
 			}
 		}
-		return None;
+		return null;
 	}
 
 	/**
@@ -476,25 +474,25 @@ class OrderedMap<K, V> {
 		True if a key exists within this Map.
 	**/
 	public function has(key:K):Bool {
-		return !get(key).equals(None);
+		return !get(key).equals(null);
 	}
 
 	/**
-		Returns the key of a given value in the map, or None if the value does not exist.
+		Returns the key of a given value in the map, or null if the value does not exist.
 	**/
-	public function find(value:V):Option<K> {
+	public function find(value:V):Null<K> {
 		for (k => v in this)
 			if (value == v)
-				return Some(k);
-		return None;
+				return k;
+		return null;
 	}
 
 	/**
-		Returns the first key at which `predicate` returns true, or None if no match is found.
+		Returns the first key at which `predicate` returns true, or null if no match is found.
 	**/
-	public function findWhere(predicate:V->Bool):Option<K> {
-		for (k => v in this) if (predicate(v)) return Some(k);
-		return None;
+	public function findWhere(predicate:V->Bool):Null<K> {
+		for (k => v in this) if (predicate(v)) return k;
+		return null;
 	}
 
 	/**
@@ -544,70 +542,70 @@ class OrderedMap<K, V> {
 		return data.copy();
 	}
 
-	/**
-		Returns a Sequence of values in this Map.
-	**/
-	public function toSequence():Sequence<V> { // TODO: implement
-		return null;
-	}
+	// /**
+	// 	Returns a Sequence of values in this Map.
+	// **/
+	// public function toSequence():Sequence<V> { // TODO: implement
+	// 	return null;
+	// }
 
-	/**
-		Returns a Sequence of key-value pairs in this Map.
-	**/
-	public function toSequenceKV():Sequence<Pair<K, V>> { // TODO: implement
-		return null;
-	}
+	// /**
+	// 	Returns a Sequence of key-value pairs in this Map.
+	// **/
+	// public function toSequenceKV():Sequence<Pair<K, V>> { // TODO: implement
+	// 	return null;
+	// }
 
-	/**
-		Returns a new Sequence of the keys of this Map, discarding values.
-	**/
-	public function toSequenceKeys():Sequence<K> { // TODO: implement
-		return null;
-	}
+	// /**
+	// 	Returns a new Sequence of the keys of this Map, discarding values.
+	// **/
+	// public function toSequenceKeys():Sequence<K> { // TODO: implement
+	// 	return null;
+	// }
 
-	/**
-		Converts this OrderedMap to a Map.
-	**/
-	public function toMap() { // TODO: implement
-		// return [for (k => v in this) k => v];
-	}
+	// /**
+	// 	Converts this OrderedMap to a Map.
+	// **/
+	// public function toMap() { // TODO: implement
+	// 	// return [for (k => v in this) k => v];
+	// }
 
-	/**
-		Converts this Map to a Set, discarding keys.
-	**/
-	public function toSet():Option<Set<V>> { // TODO: implement
-		return null;
-	}
+	// /**
+	// 	Converts this Map to a Set, discarding keys.
+	// **/
+	// public function toSet():Null<Set<V>> { // TODO: implement
+	// 	return null;
+	// }
 
-	/**
-		Converts this map to an OrderedSet, maintaining value order but discarding keys.
-	**/
-	public function toOrderedSet():Option<OrderedSet<V>> { // TODO: implement
-		return null;
-	}
+	// /**
+	// 	Converts this map to an OrderedSet, maintaining value order but discarding keys.
+	// **/
+	// public function toOrderedSet():Null<OrderedSet<V>> { // TODO: implement
+	// 	return null;
+	// }
 
-	/**
-		Converts this Map to a List, discarding keys.
+	// /**
+	// 	Converts this Map to a List, discarding keys.
 
-		```haxe
-		var myMap = Map.from({ a: "Apple", b: "Banana" })
-		var newMap = myMap.toList(); // List [ "Apple", "Banana" ]
-		```
-	**/
-	public function toList():List<V> { // TODO: implement
-		return null;
-	}
+	// 	```haxe
+	// 	var myMap = Map.from({ a: "Apple", b: "Banana" })
+	// 	var newMap = myMap.toList(); // List [ "Apple", "Banana" ]
+	// 	```
+	// **/
+	// public function toList():List<V> { // TODO: implement
+	// 	return null;
+	// }
 
-	/**
-		Converts this Collection to a Stack, discarding keys.
-	**/
-	public function toStack():Option<Stack<V>> { // TODO: implement
-		return null;
-	}
+	// /**
+	// 	Converts this Collection to a Stack, discarding keys.
+	// **/
+	// public function toStack():Null<Stack<V>> { // TODO: implement
+	// 	return null;
+	// }
 }
 
 private typedef MapType<K, V> = {
 	function has(k:K):Bool;
-	function get(k:K):Option<V>;
+	function get(k:K):Null<V>;
 	var length(get, never):Int;
 }

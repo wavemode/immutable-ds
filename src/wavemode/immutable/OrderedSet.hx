@@ -11,7 +11,6 @@
 package wavemode.immutable;
 
 using wavemode.immutable.Functional;
-import haxe.ds.Option;
 
 class OrderedSet<T> {
 	private var data:Array<T>;
@@ -331,24 +330,24 @@ class OrderedSet<T> {
 		return [for (v in values()) v];
 	}
 
-	/**
-		Returns a Sequence of values in this Set.
-	**/
-	public function toSequence():Sequence<T> { // TODO: implement
-		return null;
-	}
+	// /**
+	// 	Returns a Sequence of values in this Set.
+	// **/
+	// public function toSequence():Sequence<T> { // TODO: implement
+	// 	return null;
+	// }
 
-	/**
-		Converts this Set to a List.
-	**/
-	public function toList():List<T> { // TODO: implement
-		return null;
-	}
+	// /**
+	// 	Converts this Set to a List.
+	// **/
+	// public function toList():List<T> { // TODO: implement
+	// 	return null;
+	// }
 
-	/**
-		Converts this Set to a Stack.
-	**/
-	public function toStack():Stack<T> { // TODO: implement
-		return null;
-	}
+	// /**
+	// 	Converts this Set to a Stack.
+	// **/
+	// public function toStack():Stack<T> { // TODO: implement
+	// 	return null;
+	// }
 }

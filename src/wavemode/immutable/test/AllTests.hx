@@ -6,6 +6,9 @@
  *
  */
 
+// TODO: normalize all maximum line lengths
+// TODO: format all code
+
 package wavemode.immutable.test;
 
 import buddy.Buddy;

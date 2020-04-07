@@ -72,11 +72,11 @@ class OrderedSetTest extends BuddySuite {
 
 		describe("empty", {
 			it("should be true when the set is empty", {
-				new OrderedSet().empty().should.be(true);
+				new OrderedSet() == null.should.be(true);
 			});
 
 			it("should be false when the set is not empty", {
-				new OrderedSet().add(1).empty().should.be(false);
+				new OrderedSet().add(1) == null.should.be(false);
 			});
 		});
 
@@ -268,7 +268,7 @@ class OrderedSetTest extends BuddySuite {
 			});
 
 			it("should only include values from both sets", {
-				four.empty().should.be(true);
+				four == null.should.be(true);
 				five.equals([4, 5]).should.be(true);
 			});
 

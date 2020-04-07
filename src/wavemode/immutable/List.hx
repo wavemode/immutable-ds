@@ -8,6 +8,7 @@
 
 // TODO: array index syntax
 // TODO: make syntax for all types
+
 package wavemode.immutable;
 
 #if macro
@@ -15,7 +16,6 @@ import haxe.macro.Expr;
 import haxe.macro.Context;
 #end
 
-import haxe.ds.Option;
 import stdlib.Exception;
 
 using wavemode.immutable.Functional;
@@ -70,22 +70,22 @@ class List<T> {
 	}
 
 	/**
-		Returns the element at the given index, or None if `index` is out of bounds.
+		Returns the element at the given index, or null if `index` is out of bounds.
 	**/
-	public inline function get(index:Int):Option<T> {
+	public inline function get(index:Int):Null<T>
 		if (index >= length || index < 0)
-			return None;
-		return Some(data[index]);
-	}
+			return null;
+		else 
+			return data[index];
 
 	/**
 		Unsafe variant of `get()`. Returns the element at the given index. Throws an Exception if `index` is out of bounds.
 	**/
-	public inline function getValue(index:Int):T {
+	public inline function getValue(index:Int):T
 		if (index >= length || index < 0)
-			throw new Exception("index $index out of bounds for List length $length");
-		return data[index];
-	}
+			throw new Exception('index $index out of bounds for List length $length');
+		else
+			return data[index];
 
 	/**
 		Returns a new List with the given index replaced with the given `value`. 
@@ -410,10 +410,14 @@ class List<T> {
 		return fromArray(arr);
 	}
 
+	// TODO: verify sorting behavior
+
 	/**
 		Returns a sorted List according to the comparison function `f`, where
-		`f(x,y)` returns 0 if x == y, a positive Int if x > y and a
-		negative Int if x < y.
+		`f(x,y)` returns a negative Int if `x` should be after `y`, a positive
+		Int if `x` should be before `y`, and 0 if the values are equivalent.
+
+		For example, `[5, 4, 3, 2, 1].sort((x, y) -> y - x)` returns `[1, 2, 3, 4, 5]`
 	**/
 	public function sort(f:(T,T)->Int):List<T> {
 		var arr = data.copy();
@@ -424,20 +428,21 @@ class List<T> {
 	/**
 		Returns a List sorted ascending numerically.
 	**/
-	public macro function sortAsc(ethis : Expr):ExprOf<List<T>> {
+	public macro function sortAsc(ethis:ExprOf<List<T>>):ExprOf<List<T>> {
 		return macro {
-			$e{ethis}.sort((a, b) -> if (a < b) -1 else if (a > b) 1 else 0);
+			$e{ethis}.sort((a, b) -> b - a);
 		};
 	}
 
 	/**
 		Returns a List sorted descending numerically.
 	**/
-	public macro function sortDesc(ethis : Expr):ExprOf<List<T>> {
+	public macro function sortDesc(ethis:ExprOf<List<T>>):ExprOf<List<T>> {
 		return macro {
-			$e{ethis}.sort((a, b) -> if (a > b) -1 else if (a < b) 1 else 0);
+			$e{ethis}.sort((a, b) -> a - b);
 		};
 	}
+
 	/**
 		Returns a List of Lists, with elements grouped according to the return value of `grouper`.
 
@@ -547,16 +552,16 @@ class List<T> {
 	}
 
 	/**
-		Returns the first element of the List, or None if the List is empty.
+		Returns the first element of the List, or null if the List is empty.
 	**/
-	public function first():Option<T> {
+	public function first():Null<T> {
 		return get(0);
 	}
 
 	/**
-		Returns the last element of the List, or None if the List is empty.
+		Returns the last element of the List, or null if the List is empty.
 	**/
-	public function last():Option<T> {
+	public function last():Null<T> {
 		return get(length-1);
 	}
 
@@ -860,4 +865,12 @@ class List<T> {
 	public function toStack():Stack<T> {
 		return new Stack().pushEach(values().iterable());
 	}
+
+	/**
+		Convert this List into a Sequence<T>
+	**/
+	public function toSequence():Sequence<T> {
+		return Sequence.from(this);
+	}
+
 }

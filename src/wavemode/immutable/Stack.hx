@@ -9,7 +9,6 @@
 package wavemode.immutable;
 
 using wavemode.immutable.Functional;
-import haxe.ds.Option;
 import haxe.ds.List as LinkedList;
 import stdlib.Exception;
 
@@ -71,14 +70,14 @@ class Stack<T> {
     }
 
     /**
-        Returns the element on top of the Stack, or None if it is empty.
+        Returns the element on top of the Stack, or null if it is empty.
     **/
-    public function peek() : Option<T> {
+    public function peek():Null<T> {
         switch data {
             case Node(elem, _):
-                return Some(elem);
+                return elem;
             case Empty:
-                return None;
+                return null;
         };
     }
         
@@ -181,12 +180,12 @@ class Stack<T> {
         return !(iter.hasNext() || thisIter.hasNext());
     }
 
-    /**
-        Returns a Sequence of the values in this Stack.
-    **/
-    public function toSequence():Sequence<T> {
-        return null;
-    }
+    // /**
+    //     Returns a Sequence of the values in this Stack.
+    // **/
+    // public function toSequence():Sequence<T> {
+    //     return null;
+    // }
 
     /**
         Convert this Stack into an Array<T>

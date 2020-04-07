@@ -71,11 +71,11 @@ class SetTest extends BuddySuite {
 
 		describe("empty", {
 			it("should be true when the set is empty", {
-				new Set().empty().should.be(true);
+				new Set() == null.should.be(true);
 			});
 
 			it("should be false when the set is not empty", {
-				new Set().add(1).empty().should.be(false);
+				new Set().add(1) == null.should.be(false);
 			});
 		});
 
@@ -267,7 +267,7 @@ class SetTest extends BuddySuite {
 			});
 
 			it("should only include values from both sets", {
-				four.empty().should.be(true);
+				four == null.should.be(true);
 				five.equals([4, 5]).should.be(true);
 			});
 

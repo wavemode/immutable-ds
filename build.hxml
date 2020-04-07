@@ -5,5 +5,5 @@
 -main Main
 -lib buddy
 -lib stdlib
--lib tink_macro
+--macro nullSafety("wavemode.immutable", Strict)
 --interp

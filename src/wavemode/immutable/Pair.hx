@@ -1,6 +1,7 @@
 package wavemode.immutable;
 
 // TODO: document & test
+// TODO: swap
 
 class Pair<A, B> {
 

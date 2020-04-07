@@ -21,9 +21,9 @@ class MapTest extends BuddySuite {
 		describe("make", {
 			it("should allow for creation of a map from an object literal", {
 				var map = Map.make({a: "foo", b: "bar", c: "baz"});
-				map.get("a").should.equal(Some("foo"));
-				map.get("b").should.equal(Some("bar"));
-				map.get("c").should.equal(Some("baz"));
+				map.get("a").should.be("foo");
+				map.get("b").should.be("bar");
+				map.get("c").should.be("baz");
 			});
 		});
 
@@ -32,10 +32,10 @@ class MapTest extends BuddySuite {
 				var hxMap = [4 => "foo", 5 => "bar", 6 => "baz"];
 				var map = Map.fromMap(hxMap);
 
-				map.get(4).should.equal(Some("foo"));
-				map.get(5).should.equal(Some("bar"));
-				map.get(6).should.equal(Some("baz"));
-				map.get(7).should.equal(None);
+				map.get(4).should.be("foo");
+				map.get(5).should.be("bar");
+				map.get(6).should.be("baz");
+				map.get(7).should.be(null);
 			});
 		});
 
@@ -86,11 +86,11 @@ class MapTest extends BuddySuite {
 
 		describe("empty", {
 			it("should be true when the map is empty", {
-				new Map().empty().should.be(true);
+				new Map() == null.should.be(true);
 			});
 
 			it("should be false when the map is not empty", {
-				new Map().set(1, 2).empty().should.be(false);
+				new Map().set(1, 2) == null.should.be(false);
 			});
 		});
 
@@ -103,12 +103,12 @@ class MapTest extends BuddySuite {
 			});
 
 			it("should add a new key", {
-				two.get("c").should.equal(Some(7));
-				two.get("d").should.equal(Some(8));
+				two.get("c").should.be(7);
+				two.get("d").should.be(8);
 			});
 
 			it("should update existing keys", {
-				two.get("b").should.equal(Some(10));
+				two.get("b").should.be(10);
 			});
 
 			it("should not modify the original", {
@@ -125,11 +125,11 @@ class MapTest extends BuddySuite {
 			});
 
 			it("should create new keys", {
-				two.get("d").should.equal(Some(8));
+				two.get("d").should.be(8);
 			});
 
 			it("should update existing keys", {
-				two.get("c").should.equal(Some(7));
+				two.get("c").should.be(7);
 			});
 
 			it("should not modify the original", {
@@ -319,11 +319,11 @@ class MapTest extends BuddySuite {
 			});
 
 			it("should return the key of the given value", {
-				one.find(4).should.equal(Some("a"));
+				one.find(4).should.be("a");
 			});
 
-			it("should return None for nonexistent values", {
-				one.find(20).should.equal(None);
+			it("should return null for nonexistent values", {
+				one.find(20).should.be(null);
 			});
 		});
 
@@ -587,11 +587,11 @@ class MapTest extends BuddySuite {
 			});
 
 			it("should retrieve existing keys", {
-				one.get("a").should.equal(Some(10));
+				one.get("a").should.be(10);
 			});
 
-			it("should return None for nonexisting keys", {
-				one.get("d").should.equal(None);
+			it("should return null for nonexisting keys", {
+				one.get("d").should.be(null);
 			});
 		});
 
