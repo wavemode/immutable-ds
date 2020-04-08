@@ -8,6 +8,7 @@
 
 // TODO: array index syntax
 // TODO: make syntax for all types
+// TODO: fix sort
 
 package wavemode.immutable;
 
@@ -288,7 +289,7 @@ class List<T> {
         Equivalent to calling `push()` for each value individually, but
         potentially more efficient.
     **/
-	public function pushEach(values:Iterable<T>):List<T> {
+	public function pushEach(values:Sequence<T>):List<T> {
         var result = this;
         for (v in values) result = result.push(v);
         return result;
@@ -322,9 +323,10 @@ class List<T> {
 	}
 
     /**
-        Returns a new List with each value in `other` appended to the end.
+		Returns a new List with each value in `other` appended to the end.
+		Equivalent to `pushEach`
     **/
-	public function concat(other:Iterable<T>):List<T> {
+	public function concat(other:Sequence<T>):List<T> {
         var result = this;
         for (v in other) result = result.push(v);
         return result;
@@ -697,6 +699,7 @@ class List<T> {
 
 	/**
 		True if `predicate` is true for every element in the List.
+		True if the List is empty.
 	**/
 	public function every(predicate:T->Bool):Bool {
 		for (v in this) if (!predicate(v)) return false;

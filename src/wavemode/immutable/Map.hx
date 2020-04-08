@@ -168,10 +168,11 @@ class Map<K, V> {
 		This is equivalent to calling `set()` for each pair individually, but potentially more
 		efficient.
 	**/
-	public function setEach(keys:Iterable<K>, values:Iterable<V>):Map<K, V> {
-		var map = this, keyIter = keys.iterator(), valIter = values.iterator();
-		while (keyIter.hasNext() && valIter.hasNext()) {
-			map = map.set(keyIter.next(), valIter.next());
+	public function setEach(keys:Sequence<K>, values:Sequence<V>):Map<K, V> {
+		var index:Int = 0, map = this;
+		while (keys.has(index) && values.has(index)) {
+			map = map.set(keys.getValue(index), values.getValue(index));
+			++index;
 		}
 		return map;
 	}

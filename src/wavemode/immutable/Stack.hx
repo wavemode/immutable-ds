@@ -127,7 +127,7 @@ class Stack<T> {
     /**
         Returns a new Stack with the given `values` added to the top.
     **/
-    public function pushEach(values:Iterable<T>) : Stack<T> {
+    public function pushEach(values:Sequence<T>) : Stack<T> {
         var stack = this;
         for (v in values) stack = stack.push(v);
         return stack;

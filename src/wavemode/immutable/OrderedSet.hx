@@ -98,7 +98,7 @@ class OrderedSet<T> {
 		This is equivalent to calling `add()` for each value individually, but is potentially more
 		efficient.
 	**/
-	public function addEach(values:Iterable<T>):OrderedSet<T> {
+	public function addEach(values:Sequence<T>):OrderedSet<T> {
 		var set = this;
 		for (val in values) {
 			set = set.add(val);

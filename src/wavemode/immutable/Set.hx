@@ -100,7 +100,7 @@ class Set<T> {
 		This is equivalent to calling `add()` for each value individually, but is potentially more
 		efficient.
 	**/
-	public function addEach(values:Iterable<T>):Set<T> {
+	public function addEach(values:Sequence<T>):Set<T> {
 		var set = this;
 		for (val in values) {
 			set = set.add(val);
