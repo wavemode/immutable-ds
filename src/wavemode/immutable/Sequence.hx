@@ -1439,6 +1439,24 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     }
 
     /**
+        Zips each sequence with this sequence.
+
+        For example, `[1, 2, 3].zipAll([[4, 5, 6], [7, 8, 9]])` results in
+        `[[1, 4, 7], [2, 5, 8], [3, 6, 9]]`
+    **/
+    public function zipEach(others:Sequence<Sequence<T>>):Sequence<Sequence<T>> {
+
+        function h(index:Int):Bool
+            return others.every(s -> s.has(index));
+
+        function g(index:Int):Sequence<T>
+            return others.map(s -> s.getValue(index)).unshift(getValue(index));
+
+        return fromIdx(h, g);
+
+    }
+
+    /**
         Returns a new Sequence with the given `separator` interposed between each element.
     **/
     public function separate(separator:T):Sequence<T> {
@@ -1702,7 +1720,6 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         seq._g = g;
         seq._len = len;
         seq.cacheComplete = len != null;
-        trace("fromIdx! len: " + len);
         return seq;
     }
 
