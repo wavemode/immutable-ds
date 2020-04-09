@@ -12,7 +12,7 @@ import buddy.BuddySuite;
 import haxe.ds.Option;
 using buddy.Should;
 
-class ListTest extends BuddySuite {
+class VectorTest extends BuddySuite {
 	public function new() {
 		describe("new", {});
 		describe("fromArray", {});

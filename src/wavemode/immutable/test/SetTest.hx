@@ -511,7 +511,7 @@ class SetTest extends BuddySuite {
 		describe("toArray", {});
 		describe("toSequence", {});
 		describe("toSet", {});
-		describe("toList", {});
+		describe("toVector", {});
 		describe("toStack", {});
 	}
 }

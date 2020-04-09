@@ -586,14 +586,14 @@ class Map<K, V> {
 	}
 
 	/**
-		Converts this Map to a List, discarding keys.
+		Converts this Map to a Vector, discarding keys.
 
 		```haxe
 		var myMap = Map.from({ a: "Apple", b: "Banana" })
-		var newMap = myMap.toList(); // List [ "Apple", "Banana" ]
+		var newMap = myMap.toVector(); // Vector [ "Apple", "Banana" ]
 		```
 	**/
-	// public function toList():List<V> { // TODO: implement
+	// public function toVector():Vector<V> { // TODO: implement
 	// 	return null;
 	// }
 

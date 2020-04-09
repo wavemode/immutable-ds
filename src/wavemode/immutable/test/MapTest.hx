@@ -730,7 +730,7 @@ class MapTest extends BuddySuite {
 		describe("toMap", {});
 		describe("toSet", {});
 		describe("toOrderedSet", {});
-		describe("toList", {});
+		describe("toVector", {});
 		describe("toStack", {});
 		describe("toSequenceKeys", {});
 		describe("toSequence", {});

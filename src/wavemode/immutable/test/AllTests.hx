@@ -13,4 +13,4 @@ package wavemode.immutable.test;
 
 import buddy.Buddy;
 
-class AllTests implements Buddy<[OrderedMapTest, MapTest, OrderedSetTest, SetTest, ListTest, StackTest]> {}
+class AllTests implements Buddy<[SequenceTest]> {}

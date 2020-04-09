@@ -338,9 +338,9 @@ class OrderedSet<T> {
 	// }
 
 	// /**
-	// 	Converts this Set to a List.
+	// 	Converts this Set to a Vector.
 	// **/
-	// public function toList():List<T> { // TODO: implement
+	// public function toVector():Vector<T> { // TODO: implement
 	// 	return null;
 	// }
 
