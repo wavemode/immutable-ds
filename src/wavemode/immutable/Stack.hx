@@ -9,12 +9,12 @@
 package wavemode.immutable;
 
 using wavemode.immutable.Functional;
-import haxe.ds.Vector as LinkedVector;
+import haxe.ds.Vector as LinkedList;
 import stdlib.Exception;
 
 class Stack<T> {
 
-    private var data: LinkedVector<T>;
+    private var data: LinkedList<T>;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////// API
@@ -196,7 +196,7 @@ class Stack<T> {
 
 }
 
-private enum LinkedVector<T> {
+private enum LinkedList<T> {
     Empty;
-    Node(elem:T, next:LinkedVector<T>);
+    Node(elem:T, next:LinkedList<T>);
 }
