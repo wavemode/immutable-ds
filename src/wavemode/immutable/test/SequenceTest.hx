@@ -33,6 +33,13 @@ class SequenceTest extends BuddySuite {
 
             });
 
+            it("should create a clone of another iterable", {
+
+                new Sequence([1, 2, 3, 4]).equals([1, 2, 3, 4]).should.be(true);
+                new Sequence(new Vector().pushEach([1, 2, 3, 4])).equals([1, 2, 3, 4]).should.be(true);
+
+            });
+
         });
 
         describe("from", {
@@ -167,6 +174,28 @@ class SequenceTest extends BuddySuite {
 
         });
 
+        describe("join", {
+
+            it("should concat the sequences with a separator between", {
+
+                Sequence.join([[1, 2], [4, 6], [7, 8]], 999).equals([1, 2, 999, 4, 6, 999, 7, 8]).should.be(true);
+
+            });
+
+            it("should handle empty sequences within the input sequence", {
+
+                Sequence.join([[], [4, 5], [], [], [9]], 100).equals([100, 4, 5, 100, 100, 100, 9]).should.be(true);
+
+            });
+
+            it("should handle an empty input sequence", {
+
+                Sequence.join([], 10).equals(new Sequence()).should.be(true);
+
+            });
+
+        });
+
         describe("@:from Vector", {
 
             /**
@@ -181,10 +210,19 @@ class SequenceTest extends BuddySuite {
                 and that it is the same object as the original Vector.
             **/
 
-            var vec = Vector.fromArray([1, 2, 3, 4, 5]);
-            var seq:Sequence<Int> = vec;
+            it("should be equivalent to the original vector", {
+
+                var vec = Vector.fromArray([1, 2, 3, 4, 5]);
+                var seq:Sequence<Int> = vec;
+
+                seq.equals([1, 2, 3, 4, 5]).should.be(true);
+
+            });
 
             it("should result in a cacheless sequence", {
+
+                var vec = Vector.fromArray([1, 2, 3, 4, 5]);
+                var seq:Sequence<Int> = vec;
 
                 // here we are testing for identity (memory address), not equality
                 @:privateAccess (seq.true_self.cache == vec).should.be(true);
@@ -193,11 +231,6 @@ class SequenceTest extends BuddySuite {
 
             });
 
-            it("should be equivalent to the original vector", {
-
-                seq.equals([1, 2, 3, 4, 5]).should.be(true);
-
-            });
 
         });
 
@@ -1192,6 +1225,16 @@ class SequenceTest extends BuddySuite {
 
             });
 
+            it("should compare nested subsequences only if the 'deep' flag is true", {
+
+                var seq1 = Sequence.make(Sequence.make(1, 2), Sequence.make(3, 4));
+                var seq2 = Sequence.make(Sequence.make(1, 2), Sequence.make(3, 4));
+
+                seq1.equals(seq2).should.be(false);
+                seq1.equals(seq2, true).should.be(true);
+
+            });
+
         });
 
         describe("find / indexOf", {
@@ -1679,6 +1722,76 @@ class SequenceTest extends BuddySuite {
 
                 Sequence.make(1, 2, 3, 4).interleave(new Sequence()).equals([1, 2, 3, 4]).should.be(true);
                 new Sequence().interleave([9, 8, 7, 6]).equals([9, 8, 7, 6]).should.be(true);
+
+            });
+
+        });
+
+        describe("split", {
+
+            it("should split the sequence into subsequences divided by the given element", {
+
+                var seq = Sequence.make(1, 2, 3, 4, 5, 4, 6, 7).split(4);
+                seq.toString().should.be("Sequence { Sequence { 1, 2, 3 }, Sequence { 5 }, Sequence { 6, 7 } }");
+
+            });
+
+            it("should handle empty regions", {
+
+                var seq = Sequence.make(4, 3, 4, 4, 6, 7, 4).split(4);
+                seq.toString().should.be("Sequence { Sequence { }, Sequence { 3 }, Sequence { }, Sequence { 6, 7 }, Sequence { } }");
+
+            });
+
+        });
+
+        describe("splitWhere", {
+
+            it("should split the sequence into subsequences divided where the predicate is true", {
+
+                var seq = Sequence.make(1, 1, 3, 4, 5, 2, 7, 7).splitWhere(x -> x % 2 == 0);
+                seq.toString().should.be("Sequence { Sequence { 1, 1, 3 }, Sequence { 5 }, Sequence { 7, 7 } }");
+
+            });
+
+            it("should handle empty regions", {
+
+                var seq = Sequence.make(2, 3, 4, 8, 7, 7, 4).splitWhere(x -> x % 2 == 0);
+                seq.toString().should.be("Sequence { Sequence { }, Sequence { 3 }, Sequence { }, Sequence { 7, 7 }, Sequence { } }");
+
+            });
+
+        });
+
+        describe("partition", {
+
+            it("should divide the sequence along the given indices", {
+
+                Sequence.make(1, 2, 3, 4, 5, 6).partition([4, 2]).equals([[1, 2], [3, 4], [5, 6]], true).should.be(true);
+
+            });
+
+            it("should handle empty partitions", {
+
+                Sequence.make(1, 2, 3, 4, 5).partition([7, 5, 0, 1, 1]).equals([[], [1], [], [2, 3, 4, 5], []], true).should.be(true);
+
+            });
+
+            it("should handle extra indices", {
+
+                Sequence.make(1, 2, 3, 4).partition([2, 9, 10, 11, 12]).equals([[1, 2], [3, 4]], true).should.be(true);
+
+            });
+
+            it("should handle zero indices", {
+
+                Sequence.make(1, 2, 3, 4).partition([]).equals([[1, 2, 3, 4]], true).should.be(true);
+
+            });
+
+            it("should handle empty input", {
+
+                new Sequence().partition([1, 2, 3]).equals([[]], true).should.be(true);
 
             });
 

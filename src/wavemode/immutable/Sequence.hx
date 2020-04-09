@@ -26,10 +26,13 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
 
     /**
-        Create a new empty Sequence.
+        Create a new empty Sequence, or a clone of another object.
     **/
-    public inline function new()
-        this = new SequenceObject();
+    public inline function new(?seq:Sequence<T>)
+        if (seq != null)
+            this = seq.sure().true_self;
+        else
+            this = new SequenceObject();
 
     /**
         Create a new Sequence from an immutable Vector.
@@ -121,6 +124,54 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     public static function step(start:Int, step:Int = 1)
         return fromIdx(_->true, i->start+step*i);
     
+    /**
+        Create a Sequence with each of the given `sequences` concatenated together,
+        separated by `separator`
+    **/
+    public static function join<T>(sequences:Sequence<Sequence<T>>, separator:T):Sequence<T> {
+
+        function h(index:Int):Bool {
+            var seqIndex = 0;
+            while (sequences.has(seqIndex)) {
+                var seq = sequences[seqIndex];
+                var c = seq.count();
+                if (index < c) {
+                    return true;
+                } else if (index == c) {
+                    if (sequences.has(seqIndex + 1))
+                        return true;
+                    else
+                        return false;
+                } else if (index > c) {
+                    ++seqIndex;
+                    index -= (c + 1);
+                }
+            }
+            return false;
+        }
+
+        function g(index:Int):T {
+            var seqIndex = 0;
+            while (sequences.has(seqIndex)) {
+                var seq = sequences[seqIndex];
+                var c = seq.count();
+                if (index < c) {
+                    return seq[index];
+                } else if (index == c) {
+                    if (sequences.has(seqIndex + 1))
+                        return separator;
+                } else if (index > c) {
+                    ++seqIndex;
+                    index -= (c + 1);
+                }
+            }
+            throw new Exception('index $index out of bounds for Sequence');
+
+        }
+
+        return fromIdx(h, g);
+
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////// OPERATIONS ///////////////////////////////////////
@@ -1150,12 +1201,21 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     }
 
     /**
-        Returns true if this Sequence and the given `object` contain identical values.
+        Returns true if this Sequence and the given `sequence` contain identical values.
+        Note that equality does not always imply identity. If equality checking is needed,
+        enable the `deep` flag.
+
+        If `deep` is true, the sequences are compared by their string representations,
+        which will properly handle deeply nested subsequences and many other edge cases,
+        but will incorrectly classify as equal non-printable objects like functions.
     **/
-    public function equals(object:Sequence<T>):Bool {
+    public function equals(sequence:Sequence<T>, ?deep:Bool):Bool {
         
+        if (deep != null && deep.sure())
+            return toString() == sequence.toString();
+
         var index:Int = 0;
-        var seq:Iterator<T> = object.iterator();
+        var seq:Iterator<T> = sequence.iterator();
 
         while (has(index) && seq.hasNext()) {
             if (getValue(index) != seq.next())
@@ -1603,6 +1663,165 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             return nextVal;
         }
 
+        return fromIt(hn, n);
+
+    }
+
+    /**
+        Create a Sequence of Sequences, split by occurrences of `element`.
+    **/
+    public function split(element:T):Sequence<Sequence<T>> {
+
+        var index:Int = 0;
+        var seqIndex:Int = 0;
+        var nextSeq:Sequence<T>;
+        var valid:Bool = false;
+        var done:Bool = false;
+
+        function gv():Void
+            while (true)
+                if (!valid) {
+                    if (done) {
+                        return;
+                    } else if (has(index)) {
+                        var value = getValue(index);
+                        if (value == element) {
+                            nextSeq = slice(seqIndex, index);
+                            valid = true;
+                            seqIndex = index + 1;
+                            ++index;
+                        } else {
+                            ++index;
+                            continue;
+                        }
+                    } else {
+                        nextSeq = slice(seqIndex, index);
+                        valid = true;
+                        done = true;
+                    }
+                } else return;
+
+        function hn():Bool {
+            gv();
+            return valid;
+        }
+
+        function n():Sequence<T> {
+            gv();
+            if(!valid)
+                throw new Exception("attempt to read from empty Iterator");
+            valid = false;
+            return nextSeq;
+        }
+
+        return fromIt(hn, n);
+
+    }
+
+    /**
+        Create a Sequence of Sequences, split by occurrences where elements satisfy `predicate`.
+    **/
+    public function splitWhere(predicate:T->Bool):Sequence<Sequence<T>> {
+
+        var index:Int = 0;
+        var seqIndex:Int = 0;
+        var nextSeq:Sequence<T>;
+        var valid:Bool = false;
+        var done:Bool = false;
+
+        function gv():Void
+            while (true)
+                if (!valid) {
+                    if (done) {
+                        return;
+                    } else if (has(index)) {
+                        var value = getValue(index);
+                        if (predicate(value)) {
+                            nextSeq = slice(seqIndex, index);
+                            valid = true;
+                            seqIndex = index + 1;
+                            ++index;
+                        } else {
+                            ++index;
+                            continue;
+                        }
+                    } else {
+                        nextSeq = slice(seqIndex, index);
+                        valid = true;
+                        done = true;
+                    }
+                } else return;
+
+        function hn():Bool {
+            gv();
+            return valid;
+        }
+
+        function n():Sequence<T> {
+            gv();
+            if(!valid)
+                throw new Exception("attempt to read from empty Iterator");
+            valid = false;
+            return nextSeq;
+        }
+
+        return fromIt(hn, n);
+
+    }
+
+    /**
+        Parition this Sequence into a Sequence of Sequences, divided along the given `indices`
+    **/
+    public function partition(indices:Sequence<Int>):Sequence<Sequence<T>> {
+
+        var sortedIndices:Sequence<Int> = indices.sort((a, b) -> a - b);
+        var seqIndex:Int = 0;
+        var lastIndex:Int = 0;
+        var nextIndex:Int;
+        var valid:Bool = false;
+        var done:Bool = false;
+
+        function gv()
+            if (!valid) {
+                if (done) {
+                    return;
+                } else if (sortedIndices.has(seqIndex)) {
+                    var index = sortedIndices[seqIndex];
+                    if (has(index) || has(index - 1)) {
+                        nextIndex = index;
+                        valid = true;
+                    } else {
+                        nextIndex = -1;
+                        valid = true;
+                        done = true;
+                    }
+                } else {
+                    nextIndex = -1;
+                    valid = true;
+                    done = true;
+                }
+                ++seqIndex;
+            }
+
+        function hn():Bool {
+            gv();
+            return valid;
+        }
+
+        function n():Sequence<T> {
+            gv();
+            if (!valid)
+                throw new Exception("attempt to read from empty iterator");
+            valid = false;
+            var result:Sequence<T>;
+            if (nextIndex == -1)
+                result = slice(lastIndex);
+            else
+                result = slice(lastIndex, nextIndex);
+            lastIndex = nextIndex;
+            return result;
+        }
+        
         return fromIt(hn, n);
 
     }
