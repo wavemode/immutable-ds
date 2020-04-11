@@ -10,11 +10,19 @@ package wavemode.immutable;
 
 #if macro
 import haxe.macro.Expr;
+import haxe.macro.Context;
 #end
 
 import stdlib.Exception;
 
 using wavemode.immutable.Functional;
+
+// TODO: cacheless iteration when created from an iterable
+// TODO: infinite iterate using above optimization
+// TODO: clean up unthrowable exceptions (calling g and n, for example)
+// TODO: unsafeGetValue
+// TODO: begin forcing from latest cache index
+// TODO: more failure tests
 
 @:using(wavemode.immutable.Macros.SequenceMacros)
 abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
@@ -30,7 +38,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public inline function new(?seq:Sequence<T>)
         if (seq != null)
-            this = seq.sure().true_self;
+            this = seq.unsafe()._this;
         else
             this = new SequenceObject();
 
@@ -49,7 +57,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     /**
         Create a new Sequence from an Iterable.
     **/
-    @:from public static inline function from<T>(iter:Iterable<T>):Sequence<T> {
+    @:from public static inline function fromIterable<T, U:Iterable<T>>(iter:U):Sequence<T> {
         var it = iter.iterator();
         return fromIt(it.hasNext, it.next);
     }
@@ -57,20 +65,25 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     /**
         Create a new Sequence from any number of values.
     **/
-    public static macro function make<T>(values:Array<Expr>):ExprOf<Sequence<T>>
-        return macro Sequence.from([$a{values}]);
+    public static macro function make<T>(values:Array<ExprOf<T>>):ExprOf<Sequence<T>>
+        return macro @:pos(Context.currentPos()) new Sequence().pushEach([$a{values}]);
 
     /**
         Create a new Sequence from an Iterator.
     **/
-    @:from public static inline function fromIterator<T>(it:Iterator<T>):Sequence<T>
+    @:from public static inline function fromIterator<T, U:Iterator<T>>(it:U):Sequence<T>
         return fromIt(it.hasNext, it.next);
 
     /**
         Create an infinite sequence of a repeating `value`.
+
+        If `limit` is provided, the Sequence will be finite.
     **/
-    public static function repeat<T>(value:T):Sequence<T>
-        return fromIdx(_->true, _->value);
+    public static function repeat<T>(value:T, ?limit:Int):Sequence<T>
+        if (limit != null)
+            return fromIdx(_->true, _->value).take(limit.unsafe());
+        else
+            return fromIdx(_->true, _->value);
 
     /**
         Create a Sequence representing numbers from `start` to `end`, inclusive.
@@ -99,7 +112,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     }
 
     /**
-        Create a Sequence representing `len` values starting at `start` and
+        Create a Sequence representing `len` values starting with `start` and
         repeatedly passed through the `iterator` function.
     **/
     public static function iterate<T>(len:Int, start:T, iterator:T->T) {
@@ -119,9 +132,9 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         Create an infinite Sequence representing values starting at `start`
         and incremented by `step` each time.
 
-        `step` is 1 by default
+        `step` is 1 by default. `start` is 0 by default.
     **/
-    public static function step(start:Int, step:Int = 1)
+    public static function step(start:Int = 0, step:Int = 1)
         return fromIdx(_->true, i->start+step*i);
     
     /**
@@ -283,28 +296,6 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
     }
 
-    /**
-        Evaluates and caches every value in the Sequence.
-    **/
-    public inline function force():Sequence<T> {
-        if (isIterating())
-            count();
-        else {
-            // this will turn a cacheless sequence into a cached one
-            this.cache = new Vector();
-            var index:Int = 0;
-            while (has(index))
-                this.cache = this.cache.sure().push(getValue(index++));
-            this._len = index;
-            this.cacheComplete = true;
-            this._g = null;
-            this._h = null;
-            this._hn = () -> false;
-        }
-        return this;
-    }
-
-
     //////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////// SLICES /////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -327,11 +318,11 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
                 else
                     pos += count();
             if (end != null)
-                while (end.sure() < 0)
+                while (end.unsafe() < 0)
                     if (count() == 0)
                         return;
                     else
-                        end = end.sure() + count();
+                        end = end.unsafe() + count();
         }
 
         function h(index:Int):Bool {
@@ -340,7 +331,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             if (end == null)
                 return has(pos+index);
             else
-                return (pos+index)<end.sure() && has(pos+index); 
+                return (pos+index)<end.unsafe() && has(pos+index); 
         }
 
         function g(index:Int):T {
@@ -378,7 +369,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             if (len == null)
                 return has(pos+index);
             else
-                return index<len.sure() && has(pos+index); 
+                return index<len.unsafe() && has(pos+index); 
         }
 
         function g(index:Int):T {
@@ -504,7 +495,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public function delete(index:Int):Sequence<T> {
 
-        if (index < 0 || (this._len != null && this._len.sure() <= index))
+        if (index < 0 || (this._len != null && this._len.unsafe() <= index))
             return this;
 
         function h(i:Int):Bool {
@@ -833,7 +824,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         Returns a new Sequence with the `nth` value replaced by `value`.
     **/
     public function set(nth:Int, value:T):Sequence<T> {
-        if (nth < 0 || (this._len != null && this._len.sure() <= nth))
+        if (nth < 0 || (this._len != null && this._len.unsafe() <= nth))
             return this;
         return fromIdx(has, i -> if (i == nth) value else getValue(i), this._len);
     }
@@ -865,7 +856,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public function update(nth:Int, updater:T->T):Sequence<T> {
         
-        if (nth < 0 || (this._len != null && this._len.sure() <= nth))
+        if (nth < 0 || (this._len != null && this._len.unsafe() <= nth))
             return this;
 
         var index:Int = 0;
@@ -988,7 +979,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
             For example, given the following:
             
-            var seq = Sequence.from([1, 2, 3, null, null, null])
+            var seq = Sequence.fromIterable([1, 2, 3, null, null, null])
                         .map(x -> x * 2)
                         .group(x -> x < 7)
                         .get(0)
@@ -1052,7 +1043,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
                 gv();
                 if (nextVal.empty())
                     throw new Exception("attempt to read from empty Iterator");
-                var val = nextVal.sure();
+                var val = nextVal.unsafe();
                 nextVal = null;
                 return val;
             }
@@ -1077,7 +1068,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             getGroup();
             if (nextGroup == null)
                 throw new Exception("attempt to read from empty Iterator");
-            var seq = nextGroup.sure();
+            var seq = nextGroup.unsafe();
             nextGroup = null;
             return seq;
         }
@@ -1093,6 +1084,42 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
 
     /**
+        Returns the accumulation of this Sequence accourding to `foldFn`, beginning with
+        `initialValue`.
+
+        For example, `[1, 2, 3].fold((a, b) -> a - b, 0)` evaluates `0 - 1 - 2 - 3 = -6`
+    **/
+    public function fold<R>(reducer:(R,T)->R, initialValue:R):R {
+
+        var index:Int = 0;
+
+        while (has(index))
+            initialValue = reducer(initialValue, getValue(index++));
+
+        return initialValue;
+
+    }
+
+    /**
+        Returns the accumulation of this Sequence accourding to `foldFn`, beginning with
+        `initialValue`. Identical to `fold()`, except iterating in reverse.
+
+        For example, `[1, 2, 3].foldRight((a, b) -> a - b, 0)` evaluates `0 - 3 - 2 - 1 = -6`
+    **/
+    public function foldRight<R>(reducer:(R,T)->R, initialValue:R):R {
+
+        var index:Int = 0;
+
+        while (has(index))
+            initialValue = reducer(initialValue, getValue(index++));
+
+        return initialValue;
+
+    }
+
+    /**
+        A simpler form of `fold()`
+		
         Returns the accumulation of this Sequence accourding to `reducer`.
 
         For example, `[1, 2, 3, 4].reduce((a, b) -> a + b)` returns `10`
@@ -1101,38 +1128,40 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public function reduce(reducer:(T,T)->T):T {
 
-        if (!has(0))
+        if (empty())
             throw new Exception("attempt to reduce empty Sequence");
 
-        var index:Int = 0;
+        var index:Int = 1;
         var value:T = getValue(0);
 
-        while (has(index+1))
-            value = reducer(value, getValue(++index));
+        while (has(index))
+            value = reducer(value, getValue(index++));
 
         return value;
 
     }
 
     /**
-        Returns the accumulation of this Sequence accourding to `reducer`.
+        A simpler form of `foldRight()`
+			
+        Returns the accumulation of this Sequence accourding to `reducer`. Identical
+        to `reduce()` except iterating in reverse.
 
         For example, `[1, 2, 3, 4].reduceRight((a, b) -> a + b)` returns `10`
 
-        Throws an Exception if the Sequence is empty. Equivalent to `reduce()`,
-        but iterating in reverse.
+        Throws an Exception if the Sequence is empty.
     **/
     public function reduceRight(reducer:(T,T)->T):T {
 
-        var index:Int = count() - 1;
-
-        if (!has(index))
+        if (empty())
             throw new Exception("attempt to reduce empty Sequence");
 
-        var value:T = getValue(index);
+        var c:Int = count();
+        var index:Int = c - 2;
+        var value:T = getValue(c - 1);
 
-        while (has(index-1))
-            value = reducer(value, getValue(--index));
+        while (has(index))
+            value = reducer(value, getValue(index--));
 
         return value;
 
@@ -1159,7 +1188,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     /**
         Counts the number of elements in the Sequence.
     **/
-    public function count():Int {
+    public inline function count():Int {
 
         if (this._len != null)
             return this._len.sure();
@@ -1167,7 +1196,9 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var i = 0;
         while (has(i))
             ++i;
-        return i;
+
+        return this._len = i;
+
     }
 
     /**
@@ -1202,16 +1233,14 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
     /**
         Returns true if this Sequence and the given `sequence` contain identical values.
-        Note that equality does not always imply identity. If equality checking is needed,
-        enable the `deep` flag.
 
         If `deep` is true, the sequences are compared by their string representations,
         which will properly handle deeply nested subsequences and many other edge cases,
-        but will incorrectly classify as equal non-printable objects like functions.
+        but will incorrectly classify non-printable objects like functions.
     **/
     public function equals(sequence:Sequence<T>, ?deep:Bool):Bool {
         
-        if (deep != null && deep.sure())
+        if (deep != null && deep.unsafe())
             return toString() == sequence.toString();
 
         var index:Int = 0;
@@ -1413,7 +1442,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public function insert(index:Int, value:T):Sequence<T> {
 
-        if (index < 0 || (this._len != null && this._len.sure() < index))
+        if (index < 0 || (this._len != null && this._len.unsafe() < index))
             return this;
 
         function h(i:Int):Bool
@@ -1431,6 +1460,36 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
                 return getValue(i-1);
             else
                 return value;
+
+        return fromIdx(h, g);
+
+    }
+
+    /**
+        Returns a new sequence with the given `values` inserted at `index`.
+
+        The Sequence will be unmodified if index < 0 or index > count()
+    **/
+    public function insertEach(index:Int, values:Sequence<T>):Sequence<T> {
+
+        if (index < 0 || (this._len != null && this._len.unsafe() < index))
+            return this;
+
+        function h(i:Int):Bool
+            if (i < index)
+                return has(i);
+            else if (values.has(i - index))
+                return true;
+            else
+                return has(i - values.count());
+        
+        function g(i:Int):T
+            if (i < index)
+                return getValue(i);
+            else if (values.has(i - index))
+                return values[i - index];
+            else
+                return getValue(i - values.count());
 
         return fromIdx(h, g);
 
@@ -1616,14 +1675,14 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             while (true)
                 if (!valid) {
                     if (thisLength != null) {
-                        var len:Int = thisLength.sure(), i = index - len;
+                        var len:Int = thisLength.unsafe(), i = index - len;
                         if (!other.has(i))
                             return;
                         nextVal = other.getValue(i);
                         valid = true;
                         ++index;
                     } else if (otherLength != null) {
-                        var len:Int = otherLength.sure(), i = index - len;
+                        var len:Int = otherLength.unsafe(), i = index - len;
                         if (!has(i))
                             return;
                         nextVal = getValue(i);
@@ -1770,7 +1829,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     }
 
     /**
-        Parition this Sequence into a Sequence of Sequences, divided along the given `indices`
+        Partition this Sequence into a Sequence of Sequences, divided along the given `indices`
     **/
     public function partition(indices:Sequence<Int>):Sequence<Sequence<T>> {
 
@@ -1901,7 +1960,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public inline function toVector():Vector<T>
         // we can avoid re-iterating through this sequence if all values are already cached
-        return force().true_self.cache.sure();
+        return force()._this.cache.unsafe();
 
     /**
         Convert this Sequence to an immutable Stack of its values.
@@ -1913,18 +1972,22 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         Retrieve a string representation of the Sequence.
     **/
     public inline function toString():String {
-        var result = "Sequence {";
+        var result = new StringBuf();
+        result.add("Sequence {");
         var cut = false;
 
         var index:Int = 0;
         while (has(index)) {
             cut = true;
-            result += ' ${getValue(index++)},';
+            result.add(' ${getValue(index++)},');
         }
 
-        if (cut)
-            result = result.substr(0, result.length - 1);
-        return result + " }";
+        return
+            (if (cut)
+                result.toString().substr(0, result.length - 1)
+            else
+                result.toString())
+            + " }";
     }
 
     /**
@@ -1937,6 +2000,26 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     /////////////////////////////////////// INTERNALS ///////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+        Evaluates and caches every value in the Sequence.
+    **/
+    public function force():Sequence<T> {
+        if (isIterating())
+            count();
+        else {
+            // this will turn a cacheless sequence into a cached one
+            this.cache = new Vector();
+            var index:Int = 0;
+            while (has(index))
+                this.cache = this.cache.sure().push(getValue(index++));
+            this._len = index;
+            this.cacheComplete = true;
+            this._g = null;
+            this._h = null;
+            this._hn = () -> false;
+        }
+        return this;
+    }
 
     private inline function cacheExpand(index:Int):Bool {
 
@@ -1958,7 +2041,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
                     false;
                 })
             {
-                this.cache = this.cache.sure().push(this._n.sure()());
+                this.cache = this.cache.unsafe().push(this._n.unsafe()());
             }
 
             return cachedLength() > index;
@@ -1972,16 +2055,13 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     }
 
     private inline function cachedLength():Int
-        if (this._len != null)
-            return this._len.sure();
-        else 
-            return this.cache.sure().length;
+        return this._len.or(this.cache.unsafe().length);
 
     private inline function cacheGet(index:Int):T
         if (isIterating())
-            return this.cache.sure().getValue(index);
+            return this.cache.unsafe().getValue(index);
         else
-            return this._g.sure()(index);
+            return this._g.unsafe()(index);
 
     private inline function isIndexed():Bool
         return this._h != null;
@@ -2011,8 +2091,8 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     private var self(get, never):Sequence<T>;
     private inline function get_self() return this;
 
-    private var true_self(get, never):SequenceObject<T>;
-    private inline function get_true_self() return this;
+    private var _this(get, never):SequenceObject<T>;
+    private inline function get__this() return this;
 
 }
 

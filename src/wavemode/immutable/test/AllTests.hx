@@ -13,4 +13,4 @@ package wavemode.immutable.test;
 
 import buddy.Buddy;
 
-class AllTests implements Buddy<[SequenceTest]> {}
+class AllTests implements Buddy<[SequenceTest, VectorTest]> {}

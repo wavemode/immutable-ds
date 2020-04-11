@@ -17,18 +17,10 @@ class SequenceTest extends BuddySuite {
      
         describe("new", {
 
-            var seq;
-
-            beforeEach({
-
-                seq = new Sequence();
-
-            });
-
             it("should create an empty sequence", {
 
+                var seq = new Sequence();
                 seq.equals([]).should.be(true);
-                seq.equals([1]).should.be(false);
                 seq.count().should.be(0);
 
             });
@@ -42,26 +34,19 @@ class SequenceTest extends BuddySuite {
 
         });
 
-        describe("from", {
+        describe("fromIterable", {
 
             it("should contain same values as the original iterable", {
 
                 var list = [1, 2, 3];
-                Sequence.from(list).equals([1, 2, 3]).should.be(true);
+                Sequence.fromIterable(list).equals([1, 2, 3]).should.be(true);
     
             });
 
             it("should behave normally for an empty input", {
 
-                Sequence.from([]).equals([]).should.be(true);
-                Sequence.from([]).count().should.be(0);
-
-            });
-            
-            it("should create a clone of other Sequences", {
-
-                var one = Sequence.from([1, 2, 3]);
-                Sequence.from(one).equals(one).should.be(true);
+                Sequence.fromIterable([]).equals([]).should.be(true);
+                Sequence.fromIterable([]).count().should.be(0);
 
             });
 
@@ -119,6 +104,12 @@ class SequenceTest extends BuddySuite {
 
                 // how do we test for infinity? let's say, 100
                 Sequence.repeat(null).take(100).equals([for (i in 0...100) null]).should.be(true);
+
+            });
+
+            it("should be limited by the limit parameter", {
+
+                Sequence.repeat(5, 5).equals([5, 5, 5, 5, 5]).should.be(true);
 
             });
 
@@ -225,9 +216,9 @@ class SequenceTest extends BuddySuite {
                 var seq:Sequence<Int> = vec;
 
                 // here we are testing for identity (memory address), not equality
-                @:privateAccess (seq.true_self.cache == vec).should.be(true);
-                @:privateAccess seq.true_self._len.should.be(5);
-                @:privateAccess seq.true_self.cacheComplete.should.be(true);
+                @:privateAccess (seq._this.cache == vec).should.be(true);
+                @:privateAccess seq._this._len.should.be(5);
+                @:privateAccess seq._this.cacheComplete.should.be(true);
 
             });
 
@@ -302,7 +293,7 @@ class SequenceTest extends BuddySuite {
             it("should be true when a Sequence is empty", {
 
                 new Sequence().empty().should.be(true);
-                Sequence.from([]).empty().should.be(true);
+                Sequence.fromIterable([]).empty().should.be(true);
                 new Sequence().empty().should.be(true);
                 Sequence.make(1, 2, 3).clear().empty().should.be(true);
 
@@ -356,7 +347,8 @@ class SequenceTest extends BuddySuite {
 
             it("should work for Floats as well", {
 
-                Sequence.make(1.0, 3.0, 6.0, 2.0, 7.0).sortAsc().equals([1.0, 2.0, 3.0, 6.0, 7.0]).should.be(true);
+                var seq = Sequence.make(1.0, 3.0, 6.0, 2.0, 7.0);
+                seq.sortAsc().equals([1.0, 2.0, 3.0, 6.0, 7.0]).should.be(true);
             
             });
 
@@ -386,15 +378,15 @@ class SequenceTest extends BuddySuite {
             it("should force cacheComplete in a cached sequence", {
 
                 var seq = Sequence.make(1, 2, 3, 4).map(x -> x).force();
-                @:privateAccess seq.true_self.cacheComplete.should.be(true);
+                @:privateAccess seq._this.cacheComplete.should.be(true);
                 seq.equals([1, 2, 3, 4]).should.be(true);
             });
 
             it("should create a cache and force cacheComplete in a cacheless sequence", {
 
                 var seq = Sequence.make(1, 2, 3, 4).reverse().force();
-                @:privateAccess seq.true_self.cache.should.not.be(null);
-                @:privateAccess seq.true_self.cacheComplete.should.be(true);
+                @:privateAccess seq._this.cache.should.not.be(null);
+                @:privateAccess seq._this.cacheComplete.should.be(true);
                 seq.equals([4, 3, 2, 1]).should.be(true);
 
             });
@@ -489,7 +481,7 @@ class SequenceTest extends BuddySuite {
 
             it("should work normally for null values", {
 
-                Sequence.make(1, null, 3, null, 5).remove(null).equals([1, 3, 5]).should.be(true);
+                Sequence.fromIterable(([1, null, 3, null, 5] : Array<Null<Int>>)).remove(null).equals([1, 3, 5]).should.be(true);
 
             });
 
@@ -511,13 +503,13 @@ class SequenceTest extends BuddySuite {
 
             it("should work normally for null values", {
 
-                Sequence.make(1, null, 3, null, 5).removeEach([null, 1]).equals([3, 5]).should.be(true);
+                Sequence.fromIterable(([1, null, 3, null, 5] : Array<Null<Int>>)).removeEach(([null, 1] : Array<Null<Int>>)).equals([3, 5]).should.be(true);
 
             });
 
             it("should work normally for an empty sequence", {
 
-                new Sequence().removeEach([null, 1]).equals([]).should.be(true);
+                new Sequence().removeEach(([null, 1] : Array<Null<Int>>)).equals([]).should.be(true);
 
             });
 
@@ -539,7 +531,7 @@ class SequenceTest extends BuddySuite {
 
             it("should work normally for null values", {
 
-                Sequence.make(1, null, 3, 5).delete(1).equals([1, 3, 5]).should.be(true);
+                Sequence.fromIterable(([1, null, 3, 5] : Array<Null<Int>>)).delete(1).equals([1, 3, 5]).should.be(true);
 
             });
 
@@ -579,7 +571,7 @@ class SequenceTest extends BuddySuite {
 
             it("should work normally for null values", {
 
-                Sequence.make(1, null, 3, null, 5).deleteEach([1, 3]).equals([1, 3, 5]).should.be(true);
+                Sequence.fromIterable(([1, null, 3, null, 5] : Array<Null<Int>>)).deleteEach([1, 3]).equals([1, 3, 5]).should.be(true);
 
             });
 
@@ -1031,7 +1023,7 @@ class SequenceTest extends BuddySuite {
 
             it("should be deeply lazy", {
 
-                Sequence.from([1, 2, 3, null, null, null])
+                Sequence.fromIterable(([1, 2, 3, null, null, null] : Array<Null<Int>>))
                     .map(x -> x * 2) // this map should never execute for the null values, so we don't crash
                     .group(x -> x < 7)
                     .get(0)
@@ -1086,6 +1078,38 @@ class SequenceTest extends BuddySuite {
 
         });
 
+        describe("fold", {
+
+            it("should accumulate values according to the foldFn function", {
+
+                Sequence.make(1, 2, 3, 4).fold((a, b) -> a - b, 0).should.be(-10);
+
+            });
+
+            it("should return initialValue if the sequence is empty, without executing foldFn", {
+
+                new Sequence().fold((_, _) -> throw "never", 10).should.be(10);
+
+            });
+
+
+        });
+
+        describe("foldRight", {
+
+            it("should accumulate values according to the foldFn function, in reverse order", {
+
+                Sequence.make(1, 2, 3, 4).foldRight((a, b) -> a - b, 0).should.be(-10);
+
+            });
+
+            it("should return initialValue if the sequence is empty, without executing foldFn", {
+
+                new Sequence().foldRight((_, _) -> throw "never", 10).should.be(10);
+
+            });
+
+        });
 
         describe("has", {
 
@@ -1165,7 +1189,7 @@ class SequenceTest extends BuddySuite {
             it("should return false if any value does not satisfy the predicate, and stop execution early", {
 
                 // (null < 5) should never be executed, so our program should not crash
-                Sequence.make(1, 2, 6, 4, null).every(x -> x < 5).should.be(false);
+                Sequence.fromIterable(([1, 2, 6, 4, null] : Array<Null<Int>>)).every(x -> x < 5).should.be(false);
 
             });
 
@@ -1182,7 +1206,7 @@ class SequenceTest extends BuddySuite {
             it("should return true if any value satisfies the predicate, and stop execution early", {
 
                 // (null < 5) should never be executed, so our program should not crash
-                Sequence.make(1, null, null, null).some(x -> x < 5).should.be(true);
+                Sequence.fromIterable(([1, null, null, null] : Array<Null<Int>>)).some(x -> x < 5).should.be(true);
 
             });
 
@@ -1213,7 +1237,7 @@ class SequenceTest extends BuddySuite {
 
                 Sequence.make(1, 2, 3).equals(Sequence.make(1, 2, 3, 4)).should.be(false);
                 Sequence.make(1, 2, 3).equals(Sequence.make(1, 2)).should.be(false);
-                Sequence.make(1, 2, 3).equals(Sequence.make(null)).should.be(false);
+                Sequence.fromIterable(([1, 2, 3] : Array<Null<Int>>)).equals(Sequence.make(null)).should.be(false);
 
             });
 
@@ -1273,8 +1297,8 @@ class SequenceTest extends BuddySuite {
             it("should evaluate the sequence lazily", {
 
                 // null * 2 should never execute, so our program should not crash
-                Sequence.make(1, 2, null, 4).map(x -> x * 2).find(4).should.be(1);
-                Sequence.make(1, 2, null, 4).map(x -> x * 2).indexOf(4).should.be(1);
+                Sequence.fromIterable(([1, 2, null, 4] : Array<Null<Int>>)).map(x -> x * 2).find(4).should.be(1);
+                Sequence.fromIterable(([1, 2, null, 4] : Array<Null<Int>>)).map(x -> x * 2).indexOf(4).should.be(1);
 
             });
 
@@ -1318,7 +1342,7 @@ class SequenceTest extends BuddySuite {
             it("should evaluate the sequence lazily", {
 
                 // null * 2 should never execute, so our program should not crash
-                Sequence.make(1, 2, null, 4).map(x -> x * 2).findWhere(x -> x % 2 == 0).should.be(0);
+                Sequence.fromIterable(([1, 2, null, 4] : Array<Null<Int>>)).map(x -> x * 2).findWhere(x -> x % 2 == 0).should.be(0);
 
             });
 
@@ -1587,6 +1611,48 @@ class SequenceTest extends BuddySuite {
 
         });
         
+        describe("insertEach", {
+
+            it("should insert the given values at the given index", {
+
+                Sequence.make(1, 2, 3, 4).insertEach(2, [99, 99, 99]).equals([1, 2, 99, 99, 99, 3, 4]).should.be(true);
+
+            });
+
+            it("should grow the sequence if and only if index <= count()", {
+
+                Sequence.make(1, 2, 3, 4).insertEach(4, [5, 6]).equals([1, 2, 3, 4, 5, 6]).should.be(true);
+                Sequence.make(1, 2, 3, 4).insertEach(5, [5, 6]).equals([1, 2, 3, 4]).should.be(true);
+                Sequence.make(1, 2, 3, 4).insertEach(-1, [5, 6]).equals([1, 2, 3, 4]).should.be(true);
+
+            });
+
+            it("should behave normally for an empty sequence", {
+
+                new Sequence().insertEach(0, [10, 11, 12]).equals([10, 11, 12]).should.be(true);
+
+            });
+
+            it("optimization: should return the same identical sequence if the index is negative, or if the sequence has a complete cache and the index is known to be out of bounds", {
+
+                // here we are testing for identity (memory address), not equality
+
+                var seq = Sequence.make(1, 2, 3, 4);
+
+                (seq.insertEach(0, [10]) == seq).should.be(false);
+                (seq.insertEach(30, [10]) == seq).should.be(false);
+                (seq.insertEach(-30, [10]) == seq).should.be(true);
+
+                seq.force();
+
+                (seq.insertEach(0, [10]) == seq).should.be(false);
+                (seq.insertEach(30, [10]) == seq).should.be(true);
+                (seq.insertEach(-30, [10]) == seq).should.be(true);
+
+            });
+
+        });
+
         describe("concat", {
 
             it("should add the given values to the end of the sequence", {
@@ -1995,7 +2061,7 @@ class SequenceTest extends BuddySuite {
                 var vec = seq.toVector();
 
                 // here we are testing for identity (memory address), not equality
-                @:privateAccess (seq.true_self.cache == vec).should.be(true);
+                @:privateAccess (seq._this.cache == vec).should.be(true);
 
             });
 

@@ -20,11 +20,18 @@ class Functional {
 		Returns an unwrapped Null<T> object or a default alternative if
 		the object is null.
 	**/
-	public static function or<T>(value:Null<T>, defaultValue:T):T
+	public static inline function or<T>(value:Null<T>, defaultValue:T):T
 		if (value == null)
 			return defaultValue;
 		else
 			return @:nullSafety(Off) (value:T);
+
+	/**
+		Returns an unwrapped Null<T> object via @:nullSafety(Off). Unsafe
+		unless you have already tested against null.
+	**/
+	public static inline function unsafe<T>(value:Null<T>):T
+		return @:nullSafety(Off) (value:T);
 	
 
 	/**
