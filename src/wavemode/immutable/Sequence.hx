@@ -1084,34 +1084,34 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
 
     /**
-        Returns the accumulation of this Sequence accourding to `foldFn`, beginning with
+        Returns the accumulation of this Sequence according to `foldFn`, beginning with
         `initialValue`.
 
         For example, `[1, 2, 3].fold((a, b) -> a - b, 0)` evaluates `0 - 1 - 2 - 3 = -6`
     **/
-    public function fold<R>(reducer:(R,T)->R, initialValue:R):R {
+    public function fold<R>(foldFn:(R,T)->R, initialValue:R):R {
 
         var index:Int = 0;
 
         while (has(index))
-            initialValue = reducer(initialValue, getValue(index++));
+            initialValue = foldFn(initialValue, getValue(index++));
 
         return initialValue;
 
     }
 
     /**
-        Returns the accumulation of this Sequence accourding to `foldFn`, beginning with
+        Returns the accumulation of this Sequence according to `foldFn`, beginning with
         `initialValue`. Identical to `fold()`, except iterating in reverse.
 
         For example, `[1, 2, 3].foldRight((a, b) -> a - b, 0)` evaluates `0 - 3 - 2 - 1 = -6`
     **/
-    public function foldRight<R>(reducer:(R,T)->R, initialValue:R):R {
+    public function foldRight<R>(foldFn:(R,T)->R, initialValue:R):R {
 
         var index:Int = 0;
 
         while (has(index))
-            initialValue = reducer(initialValue, getValue(index++));
+            initialValue = foldFn(initialValue, getValue(index++));
 
         return initialValue;
 
@@ -1120,7 +1120,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     /**
         A simpler form of `fold()`
 		
-        Returns the accumulation of this Sequence accourding to `reducer`.
+        Returns the accumulation of this Sequence according to `reducer`.
 
         For example, `[1, 2, 3, 4].reduce((a, b) -> a + b)` returns `10`
 
@@ -1144,7 +1144,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     /**
         A simpler form of `foldRight()`
 			
-        Returns the accumulation of this Sequence accourding to `reducer`. Identical
+        Returns the accumulation of this Sequence according to `reducer`. Identical
         to `reduce()` except iterating in reverse.
 
         For example, `[1, 2, 3, 4].reduceRight((a, b) -> a + b)` returns `10`

@@ -732,7 +732,7 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> {
 	//////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
-		Returns the accumulation of this Vector accourding to `foldFn`, beginning with
+		Returns the accumulation of this Vector according to `foldFn`, beginning with
 		`initialValue`.
 
 		For example, `[1, 2, 3].fold((a, b) -> a - b, 0)` evaluates `0 - 1 - 2 - 3 = -6`
@@ -749,7 +749,7 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> {
 	}
 
 	/**
-		Returns the accumulation of this Vector accourding to `foldFn`, beginning with
+		Returns the accumulation of this Vector according to `foldFn`, beginning with
 		`initialValue`. Identical to `fold()`, except iterating in reverse.
 
 		For example, `[1, 2, 3].foldRight((a, b) -> a - b, 0)` evaluates `0 - 3 - 2 - 1 = -6`
@@ -768,7 +768,7 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> {
 	/**
 		A simpler form of `fold()`
 		
-		Returns the accumulation of this Vector accourding to `reducer`.
+		Returns the accumulation of this Vector according to `reducer`.
 
 		For example, `[1, 2, 3, 4].reduce((a, b) -> a + b)` returns `10`
 
@@ -792,7 +792,7 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> {
 	/**
 		A simpler form of `foldRight()`
 			
-		Returns the accumulation of this Vector accourding to `reducer`. Identical
+		Returns the accumulation of this Vector according to `reducer`. Identical
 		to `reduce()` except iterating in reverse.
 
 		For example, `[1, 2, 3, 4].reduceRight((a, b) -> a + b)` returns `10`

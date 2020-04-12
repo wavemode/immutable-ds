@@ -16,15 +16,22 @@ class OrderedMapTest extends BuddySuite {
 	public function new() {
 		// TODO: failure for unhashable types
 		// TODO: success for hashable types
-		// TODO: proper conversion testing
 
-		describe("make", {
-			it("should allow for creation of a map from an object literal", {
-				var map = OrderedMap.make({a: "foo", b: "bar", c: "baz"});
-				map.get("a").should.be("foo");
-				map.get("b").should.be("bar");
-				map.get("c").should.be("baz");
+		describe("new", {
+
+			it("should create a blank map", {
+
+				new OrderedMap().empty().should.be(true);
+
 			});
+
+			it("should create a copy of another OrderedMap", {
+
+				new OrderedMap(OrderedMap.make({a: 1, b: 2, c: 3}))
+					.equals(OrderedMap.make({a: 1, b: 2, c: 3})).should.be(true);
+
+			});
+
 		});
 
 		describe("fromMap", {
@@ -39,80 +46,12 @@ class OrderedMapTest extends BuddySuite {
 			});
 		});
 
-		describe("iterator", {
-			var pairs, map, iter;
-
-			beforeEach({
-				pairs = [{key: "a", value: "foo"}, {key: "b", value: "bar"}, {key: "c", value: "baz"}];
-				iter = pairs.iterator();
-			});
-
-			it("should iterate in insertion order", {
-				map = new OrderedMap().set("a", "foo").set("b", "bar").set("c", "baz");
-
-				for (value in map) {
-					var pair = iter.next();
-					value.should.be(pair.value);
-				}
-			});
-
-			it("should iterate in struct declaration order", {
-				map = OrderedMap.make({a: "foo", b: "bar", c: "baz"});
-
-				for (value in map) {
-					var pair = iter.next();
-					value.should.be(pair.value);
-				}
-			});
-		});
-
-		describe("keyValueIterator", {
-			it("should iterate in struct declaration order", {
-				var pairs = [{key: "a", value: "foo"}, {key: "b", value: "bar"}, {key: "c", value: "baz"}];
+		describe("make", {
+			it("should allow for creation of a map from an object literal", {
 				var map = OrderedMap.make({a: "foo", b: "bar", c: "baz"});
-
-				var it = pairs.iterator();
-
-				for (key => value in map) {
-					var pair = it.next();
-					key.should.be(pair.key);
-					value.should.be(pair.value);
-				}
-			});
-
-			it("should iterate in insertion order", {
-				var pairs = [{key: "a", value: "foo"}, {key: "b", value: "bar"}, {key: "c", value: "baz"}];
-				var map = new OrderedMap();
-
-				for (pair in pairs)
-					map = map.set(pair.key, pair.value);
-
-				var it = pairs.iterator();
-
-				for (key => value in map) {
-					var pair = it.next();
-					key.should.be(pair.key);
-					value.should.be(pair.value);
-				}
-			});
-		});
-
-		describe("length", {
-			it("should be equal to the number of key-value pairs in the map", {
-				var hxMap = [4 => "foo", 5 => "bar", 6 => "baz"];
-				var map = OrderedMap.fromMap(hxMap);
-
-				map.length.should.be(3);
-			});
-		});
-
-		describe("empty", {
-			it("should be true when the map is empty", {
-				new OrderedMap() == null.should.be(true);
-			});
-
-			it("should be false when the map is not empty", {
-				new OrderedMap().set(1, 2) == null.should.be(false);
+				map.get("a").should.be("foo");
+				map.get("b").should.be("bar");
+				map.get("c").should.be("baz");
 			});
 		});
 
@@ -152,91 +91,6 @@ class OrderedMapTest extends BuddySuite {
 
 			it("should update existing keys", {
 				two.get("c").should.be(7);
-			});
-
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: 4, b: 5, c: 6})).should.be(true);
-			});
-		});
-
-		describe("remove", {
-			var one, two;
-
-			beforeEach({
-				one = OrderedMap.make({a: 4, b: 5, c: 6});
-				two = one.remove("a");
-			});
-
-			it("should remove a key", {
-				two.equals(OrderedMap.make({b: 5, c: 6})).should.be(true);
-			});
-
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({b: 5, c: 6, a: 4})).should.be(true);
-			});
-		});
-
-		describe("removeValue", {
-			var one, two;
-
-			beforeEach({
-				one = OrderedMap.make({a: 4, b: 5, c: 6});
-				two = one.removeValue(5);
-			});
-
-			it("should remove a value", {
-				two.equals(OrderedMap.make({a: 4, c: 6})).should.be(true);
-			});
-
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: 4, b: 5, c: 6})).should.be(true);
-			});
-		});
-
-		describe("removeEach", {
-			var one, two;
-
-			beforeEach({
-				one = OrderedMap.make({a: 4, b: 5, c: 6});
-				two = one.removeEach(["a", "c"]);
-			});
-
-			it("should remove each key", {
-				two.equals(OrderedMap.make({b: 5})).should.be(true);
-			});
-
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: 4, b: 5, c: 6})).should.be(true);
-			});
-		});
-
-		describe("removeEachValue", {
-			var one, two;
-
-			beforeEach({
-				one = OrderedMap.make({a: 4, b: 5, c: 6});
-				two = one.removeEachValue([4, 5]);
-			});
-
-			it("should remove each value", {
-				two.equals(OrderedMap.make({c: 6})).should.be(true);
-			});
-
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: 4, b: 5, c: 6})).should.be(true);
-			});
-		});
-
-		describe("clear", {
-			var one, two;
-
-			beforeEach({
-				one = OrderedMap.make({a: 4, b: 5, c: 6});
-				two = one.clear();
-			});
-
-			it("should make the map empty", {
-				two.equals(new OrderedMap()).should.be(true);
 			});
 
 			it("should not modify the original", {
@@ -332,6 +186,67 @@ class OrderedMapTest extends BuddySuite {
 			});
 		});
 
+		describe("get", {
+			var one;
+
+			beforeEach({
+				one = OrderedMap.make({a: 10, b: 20, c: 30});
+			});
+
+			it("should retrieve existing keys", {
+				one.get("a").should.be(10);
+			});
+
+			it("should return null for nonexisting keys", {
+				one.get("d").should.be(null);
+			});
+		});
+		
+
+		describe("getValue [index]", {
+			var one;
+
+			beforeEach({
+				one = OrderedMap.make({a: 10, b: 20, c: 30});
+			});
+
+			it("should retrieve existing keys", {
+				one.getValue("a").should.be(10);
+				one["a"].should.be(10);
+			});
+
+			it("should throw an exception for nonexisting keys", {
+				(() -> one.getValue("d")).should.throwAnything();
+				(() -> one["d"]).should.throwAnything();
+			});
+		});
+		
+		describe("has", {
+			var one;
+
+			beforeEach({
+				one = OrderedMap.make({a: 10, b: 20, c: 30});
+			});
+
+			it("should return true for existing keys", {
+				one.has("a").should.be(true);
+			});
+
+			it("should return false for nonexisting keys", {
+				one.has("d").should.be(false);
+			});
+		});
+
+		describe("empty", {
+			it("should be true when the map is empty", {
+				new OrderedMap().empty().should.be(true);
+			});
+
+			it("should be false when the map is not empty", {
+				new OrderedMap().set(1, 2).empty().should.be(false);
+			});
+		});
+
 		describe("find", {
 			var one;
 
@@ -345,6 +260,125 @@ class OrderedMapTest extends BuddySuite {
 
 			it("should return null for nonexistent values", {
 				one.find(20).should.be(null);
+			});
+		});
+
+		describe("findWhere", {
+			var one;
+
+			beforeEach({
+				one = OrderedMap.make({a: 4, b: 5, c: 4});
+			});
+
+			it("should return the first key where the predicate is satisfied", {
+				one.findWhere(x -> x == 4).should.be("a");
+			});
+
+			it("should return null if the predicate never returns true", {
+				one.findWhere(x -> x == 20).should.be(null);
+			});
+		});
+
+		describe("filter", {
+			var one, two;
+
+			beforeEach({
+				one = OrderedMap.make({a: 10, b: 20, c: 30});
+				two = one.filter((k, x) -> x % 3 == 0);
+			});
+
+			it("should remove values not satisfying predicate", {
+				two.equals(OrderedMap.make({c: 30})).should.be(true);
+			});
+
+			it("should not modify the original", {
+				one.equals(OrderedMap.make({a: 10, b: 20, c: 30})).should.be(true);
+			});
+		});
+
+
+		describe("remove", {
+			var one, two;
+
+			beforeEach({
+				one = OrderedMap.make({a: 4, b: 5, c: 5});
+				two = one.remove(5);
+			});
+
+			it("should remove every instance of a value", {
+				two.equals(OrderedMap.make({a: 4})).should.be(true);
+			});
+
+			it("should not modify the original", {
+				one.equals(OrderedMap.make({a: 4, b: 5, c: 5})).should.be(true);
+			});
+		});
+
+		describe("removeEach", {
+			var one, two;
+
+			beforeEach({
+				one = OrderedMap.make({a: 4, b: 5, c: 6});
+				two = one.removeEach([4, 5]);
+			});
+
+			it("should remove each value", {
+				two.equals(OrderedMap.make({c: 6})).should.be(true);
+			});
+
+			it("should not modify the original", {
+				one.equals(OrderedMap.make({a: 4, b: 5, c: 6})).should.be(true);
+			});
+		});
+
+		describe("delete", {
+			var one, two;
+
+			beforeEach({
+				one = OrderedMap.make({a: 4, b: 5, c: 6});
+				two = one.delete("a");
+			});
+
+			it("should remove a key", {
+				two.equals(OrderedMap.make({b: 5, c: 6})).should.be(true);
+			});
+
+			it("should not modify the original", {
+				one.equals(OrderedMap.make({b: 5, c: 6, a: 4})).should.be(true);
+			});
+		});
+
+		describe("deleteEach", {
+			var one, two;
+
+			beforeEach({
+				one = OrderedMap.make({a: 4, b: 5, c: 6});
+				two = one.deleteEach(["a", "c"]);
+			});
+
+			it("should remove each key", {
+				two.equals(OrderedMap.make({b: 5})).should.be(true);
+			});
+
+			it("should not modify the original", {
+				one.equals(OrderedMap.make({a: 4, b: 5, c: 6})).should.be(true);
+			});
+		});
+
+		describe("clear", {
+			var one, two;
+
+			beforeEach({
+				one = OrderedMap.make({a: 4, b: 5, c: 6});
+				two = one.clear();
+			});
+
+			it("should make the map empty", {
+				two.equals(new OrderedMap()).should.be(true);
+			});
+
+			it("should not modify the original", {
+				one.equals(OrderedMap.make({a: 4, b: 5, c: 6})).should.be(true);
 			});
 		});
 
@@ -427,28 +461,11 @@ class OrderedMapTest extends BuddySuite {
 
 			beforeEach({
 				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				two = one.map(Std.string);
+				two = one.map((k, v) -> Std.string(v));
 			});
 
 			it("should modify each value", {
 				two.equals(OrderedMap.make({a: "10", b: "20", c: "30"})).should.be(true);
-			});
-
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: 10, b: 20, c: 30})).should.be(true);
-			});
-		});
-
-		describe("mapWithKey", {
-			var one, two;
-
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				two = one.mapWithKey((k, v) -> k + v);
-			});
-
-			it("should modify each value", {
-				two.equals(OrderedMap.make({a: "a10", b: "b20", c: "c30"})).should.be(true);
 			});
 
 			it("should not modify the original", {
@@ -473,112 +490,89 @@ class OrderedMapTest extends BuddySuite {
 			});
 		});
 
-		describe("mapEntries", {
-			var one, two;
+		describe("fold", {
 
-			beforeEach({
-				one = OrderedMap.make({a: "g", b: "h"});
-				two = one.mapEntries((k, v) -> new Pair(v, k));
+			it("should accumulate the values according to foldFn", {
+
+				OrderedMap.make({a: 4, b: 5, c: 6}).fold((a, b) -> a + b, 0).should.be(15);
+
 			});
 
-			it("should modify each key-value pair", {
-				two.equals(OrderedMap.make({h: "b", g: "a"})).should.be(true);
+			it("should work normally for an empty Map", {
+
+				new OrderedMap().fold((a, b) -> a + b, 10).should.be(10);
+
 			});
 
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: "g", b: "h"})).should.be(true);
+		});
+
+		describe("reduce", {
+
+			it("should accumulate the values according to foldFn", {
+
+				OrderedMap.make({a: 4, b: 5, c: 6}).reduce((a, b) -> a + b).should.be(15);
+
+			});
+
+			it("should throw an exception for an empty Map", {
+
+				(() -> new OrderedMap().reduce((a, b) -> a + b)).should.throwAnything();
+
+			});
+
+		});
+
+		describe("length", {
+			it("should be equal to the number of key-value pairs in the map", {
+				var hxMap = [4 => "foo", 5 => "bar", 6 => "baz"];
+				var map = OrderedMap.fromMap(hxMap);
+
+				map.length.should.be(3);
 			});
 		});
 
-		describe("filter", {
-			var one, two;
+		describe("every", {
 
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				two = one.filter(x -> x % 3 == 0);
+			it("should return true if the predicate is true for all values", {
+
+				OrderedMap.make({a: 2, b: 4, c: 6}).every(x -> x % 2 == 0).should.be(true);
+
 			});
 
-			it("should remove values not satisfying predicate", {
-				two.equals(OrderedMap.make({c: 30})).should.be(true);
+			it("should return false if the predicate is false for any value", {
+
+				OrderedMap.make({a: 2, b: 4, c: 7}).every(x -> x % 2 == 0).should.be(false);
+
 			});
 
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: 10, b: 20, c: 30})).should.be(true);
+			it("should return true for an empty Map", {
+
+				new OrderedMap().every(x -> x % 2 == 0).should.be(true);
+
 			});
+
 		});
 
-		describe("filterWithKey", {
-			var one, two;
+		describe("some", {
 
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				two = one.filterWithKey((k, x) -> x % 3 == 0);
+			it("should return true if the predicate is true for any value", {
+
+				OrderedMap.make({a: 3, b: 3, c: 4}).some(x -> x % 2 == 0).should.be(true);
+
 			});
 
-			it("should remove values not satisfying predicate", {
-				two.equals(OrderedMap.make({c: 30})).should.be(true);
+			it("should return false if the predicate is false for all values", {
+
+				OrderedMap.make({a: 3, b: 5, c: 7}).some(x -> x % 2 == 0).should.be(false);
+
 			});
 
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: 10, b: 20, c: 30})).should.be(true);
-			});
-		});
+			it("should return false for an empty Map", {
 
-		describe("flip", {
-			var one, two;
+				new OrderedMap().some(x -> x % 2 == 0).should.be(false);
 
-			beforeEach({
-				one = OrderedMap.make({a: "g", b: "h"});
-				two = one.flip();
 			});
 
-			it("should swap keys and values", {
-				two.equals(OrderedMap.make({h: "b", g: "a"})).should.be(true);
-			});
-
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: "g", b: "h"})).should.be(true);
-			});
-		});
-
-		describe("toArray", {
-			var one, two;
-
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				two = one.toArray();
-			});
-
-			it("should convert to equivalent array", {
-				for (i in 0...two.length) {
-					two[i].should.be([10, 20, 30][i]);
-				}
-			});
-
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: 10, b: 20, c: 30})).should.be(true);
-			});
-		});
-
-		describe("toArrayKV", {
-			var one, two, pairs;
-
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				two = one.toArrayKV();
-				pairs = [{key: "a", value: 10}, {key: "b", value: 20}, {key: "c", value: 30}];
-			});
-
-			it("should convert to equivalent key-value array", {
-				for (i in 0...two.length) {
-					two[i].a.should.be(pairs[i].key);
-					two[i].b.should.be(pairs[i].value);
-				}
-			});
-
-			it("should not modify the original", {
-				one.equals(OrderedMap.make({a: 10, b: 20, c: 30})).should.be(true);
-			});
 		});
 
 		describe("equals", {
@@ -604,102 +598,6 @@ class OrderedMapTest extends BuddySuite {
 			});
 		});
 
-		describe("get", {
-			var one;
-
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-			});
-
-			it("should retrieve existing keys", {
-				one.get("a").should.be(10);
-			});
-
-			it("should return null for nonexisting keys", {
-				one.get("d").should.be(null);
-			});
-		});
-
-		describe("has", {
-			var one;
-
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-			});
-
-			it("should return true for existing keys", {
-				one.has("a").should.be(true);
-			});
-
-			it("should return false for nonexisting keys", {
-				one.has("d").should.be(false);
-			});
-		});
-
-		describe("hasValue", {
-			var one;
-
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-			});
-
-			it("should return true for existing values", {
-				one.hasValue(10).should.be(true);
-			});
-
-			it("should return false for nonexisting values", {
-				one.hasValue(101).should.be(false);
-			});
-		});
-
-		describe("keys", {
-			var one, keys, iter;
-
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				keys = ["a", "b", "c"];
-				iter = keys.iterator();
-			});
-
-			it("should iterate over each key in order", {
-				for (k in one.keys())
-					iter.next().should.be(k);
-			});
-		});
-
-		describe("values", {
-			var one, values, iter;
-
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				values = [10, 20, 30];
-				iter = values.iterator();
-			});
-
-			it("should iterate over each value in order", {
-				for (_ => v in one)
-					iter.next().should.be(v);
-			});
-		});
-
-		describe("entries", {
-			var one, entries, iter;
-
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				entries = [{key: "a", value: 10}, {key: "b", value: 20}, {key: "c", value: 30}];
-				iter = entries.iterator();
-			});
-
-			it("should iterate over each value in order", {
-				for (k => v in one) {
-					var pair = iter.next();
-					pair.key.should.be(k);
-					pair.value.should.be(v);
-				}
-			});
-		});
-
 		describe("forEach", {
 			var one;
 
@@ -720,42 +618,215 @@ class OrderedMapTest extends BuddySuite {
 			});
 		});
 
-		describe("forWhile", {
-			var one;
+		describe("iterator", {
+			var pairs, map, iter;
 
 			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
+				pairs = [{key: "a", value: "foo"}, {key: "b", value: "bar"}, {key: "c", value: "baz"}];
+				iter = pairs.iterator();
 			});
 
-			it("should execute function for each entry", {
-				var i = 0;
-				one.forWhile((k, v) -> {
-					++i;
-					true;
-				});
-				i.should.be(3);
+			it("should iterate in insertion order", {
+				map = new OrderedMap().set("a", "foo").set("b", "bar").set("c", "baz");
+
+				for (value in map) {
+					var pair = iter.next();
+					value.should.be(pair.value);
+				}
 			});
 
-			it("should stop execution when function returns false", {
-				var i = 0;
-				one.forWhile((k, v) -> ++i < 2).should.be(2);
-				i.should.be(2);
-			});
+			it("should iterate in struct declaration order", {
+				map = OrderedMap.make({a: "foo", b: "bar", c: "baz"});
 
-			it("should behave normally for the empty map", {
-				var i = 0;
-				new OrderedMap().forWhile((k, v) -> ++i < 2).should.be(0);
-				i.should.be(0);
+				for (value in map) {
+					var pair = iter.next();
+					value.should.be(pair.value);
+				}
 			});
 		});
 
-		describe("toMap", {});
-		describe("toSet", {});
-		describe("toOrderedSet", {});
-		describe("toVector", {});
-		describe("toStack", {});
-		describe("toSequenceKeys", {});
-		describe("toSequence", {});
-		describe("toSequenceKV", {});
+		describe("keyValueIterator", {
+			it("should iterate in struct declaration order", {
+				var pairs = [{key: "a", value: "foo"}, {key: "b", value: "bar"}, {key: "c", value: "baz"}];
+				var map = OrderedMap.make({a: "foo", b: "bar", c: "baz"});
+
+				var it = pairs.iterator();
+
+				for (key => value in map) {
+					var pair = it.next();
+					key.should.be(pair.key);
+					value.should.be(pair.value);
+				}
+			});
+
+			it("should iterate in insertion order", {
+				var pairs = [{key: "a", value: "foo"}, {key: "b", value: "bar"}, {key: "c", value: "baz"}];
+				var map = new OrderedMap();
+
+				for (pair in pairs)
+					map = map.set(pair.key, pair.value);
+
+				var it = pairs.iterator();
+
+				for (key => value in map) {
+					var pair = it.next();
+					key.should.be(pair.key);
+					value.should.be(pair.value);
+				}
+			});
+		});
+
+		describe("keys", {
+			var one, iter;
+
+			beforeEach({
+				one = OrderedMap.make({a: 10, b: 20, c: 30});
+				iter = one.keys();
+			});
+
+			it("should iterate over each key in order", {
+				for (k => v in one)
+					iter.next().should.be(k);
+			});
+		});
+
+		describe("values", {
+			var one, iter;
+
+			beforeEach({
+				one = OrderedMap.make({a: 10, b: 20, c: 30});
+				iter = one.values();
+			});
+
+			it("should iterate over each value in order", {
+				for (_ => v in one)
+					iter.next().should.be(v);
+			});
+		});
+
+		describe("entries", {
+			var one, iter;
+
+			beforeEach({
+				one = OrderedMap.make({a: 10, b: 20, c: 30});
+				iter = one.entries();
+			});
+
+			it("should iterate over each value in order", {
+				for (k => v in one) {
+					var pair = iter.next();
+					pair.key.should.be(k);
+					pair.value.should.be(v);
+				}
+			});
+		});
+
+		describe("toArray", {
+			var one, two;
+
+			beforeEach({
+				one = OrderedMap.make({a: 10, b: 20, c: 30});
+				two = one.toArray();
+			});
+
+			it("should convert to equivalent array", {
+				for (i in 0...two.length) {
+					two[i].should.be([10, 20, 30][i]);
+				}
+			});
+
+			it("should not modify the original", {
+				one.equals(OrderedMap.make({a: 10, b: 20, c: 30})).should.be(true);
+			});
+		});
+
+		describe("toMap", {
+
+			it("should convert to an equivalent Map", {
+
+				var one = OrderedMap.make({a: 10, b: 20, c: 30});
+				var two = one.toMap();
+				two.equals(OrderedMap.make({a: 10, b: 20, c: 30})).should.be(true);
+
+			});
+
+			it("should work normally for an empty map", {
+
+				var one = new OrderedMap();
+				var two = one.toMap();
+				two.equals(new OrderedMap()).should.be(true);
+
+			});
+
+		});
+		
+		describe("toSet", {
+
+			it("should convert to an equivalent Set", {
+
+				var one = OrderedMap.make({a: 10, b: 20, c: 30});
+				var set = one.toSet();
+
+				set.has(10).should.be(true);
+				set.has(20).should.be(true);
+				set.has(30).should.be(true);
+				set.length.should.be(3);
+
+			});
+
+		});
+
+		describe("toOrderedSet", {
+
+			it("should convert to an equivalent OrderedSet in the same order", {
+
+				var one = OrderedMap.make({a: 10, b: 20, c: 30});
+				var setIter = one.toOrderedSet().iterator();
+
+				for (v in one)
+					v.should.be(setIter.next());
+
+			});
+
+		});
+
+		describe("toVector", {
+
+			it("should convert to an equivalent Vector in the same order", {
+
+				var one = OrderedMap.make({a: 10, b: 20, c: 30});
+				var vecIter = one.toVector().iterator();
+
+				for (v in one)
+					v.should.be(vecIter.next());
+
+			});
+
+		});
+
+		describe("toString", {
+
+			it("should convert to an equivalent String representation", {
+
+				OrderedMap.make({a: 10, b: 20, c: 30}).toString().should.be("OrderedMap { a: 10, b: 20, c: 30 }");
+
+			});
+
+		});
+
+		describe("toSequence", {
+
+			it("should convert to an equivalent Sequence in the same order", {
+
+				var one = OrderedMap.make({a: 10, b: 20, c: 30});
+				var seqIter = one.toSequence().iterator();
+
+				for (v in one)
+					v.should.be(seqIter.next());
+
+			});
+
+		});
+
 	}
 }
