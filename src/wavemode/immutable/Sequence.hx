@@ -20,7 +20,6 @@ using wavemode.immutable.Functional;
 // TODO: cacheless iteration when created from an iterable
 // TODO: infinite iterate using above optimization
 // TODO: clean up unthrowable exceptions (calling g and n, for example)
-// TODO: unsafeGetValue
 // TODO: begin forcing from latest cache index
 // TODO: more failure tests
 
@@ -1885,6 +1884,35 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
     }
 
+    /**
+        Shuffle the Sequence to be in a random order.
+    **/
+    public function shuffle():Sequence<T> {
+
+        var idxs:Array<Int>;
+        var valid:Bool = false;
+
+        function g(index:Int):T {
+
+            if (!valid) {
+                idxs = [for (i in indices()) i];
+                for (i in 0...count()) {
+                    var newIndex = i + Std.random(count() - i);
+                    var temp = idxs[newIndex];
+                    idxs[newIndex] = idxs[i];
+                    idxs[i] = temp;
+                }
+                valid = true;
+            }
+
+            return getValue(idxs[index]);
+
+        }
+
+        return fromIdx(has, g, this._len);
+
+    }
+
 
     /////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////// CONVERSIONS //////////////////////////////////////
@@ -1961,12 +1989,6 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     public inline function toVector():Vector<T>
         // we can avoid re-iterating through this sequence if all values are already cached
         return force()._this.cache.unsafe();
-
-    /**
-        Convert this Sequence to an immutable Stack of its values.
-    **/
-    public inline function toStack():Stack<T>
-        return new Stack().pushEach(values());
 
     /**
         Retrieve a string representation of the Sequence.

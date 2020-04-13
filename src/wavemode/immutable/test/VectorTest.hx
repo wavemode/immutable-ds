@@ -972,6 +972,20 @@ class VectorTest extends BuddySuite {
 
 		});
 
+		describe("shuffle", {
+
+			// this test is disabled because it could occasionally fail...
+
+			/*
+			it("should rearrange the order of the elements", {
+
+				var vec = Vector.make(1, 2, 3, 4);
+				vec.equals(vec.shuffle()).should.be(false);
+
+			});
+			*/
+
+		});
 
 		describe("slice", {
 
@@ -1802,20 +1816,6 @@ class VectorTest extends BuddySuite {
 				var i = 0;
 				for (v in set)
 					Vector.make(1, 2, 3, 4)[i++].should.be(v);
-
-			});
-
-		});
-
-		describe("toStack", {
-
-			it("should convert a Vector to an equivalent (reversed) Stack", {
-
-				var stack = Vector.make(1, 2, 3, 4).toStack();
-				stack.count().should.be(4);
-				var i = 0;
-				for (v in stack)
-					Vector.make(1, 2, 3, 4).reverse()[i++].should.be(v);
 
 			});
 

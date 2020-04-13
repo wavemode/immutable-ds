@@ -517,6 +517,23 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> {
 	public function partition(indices:Sequence<Int>):Vector<Vector<T>>
 		return Sequence.fromVector(self).partition(indices).toVector().map(fromSequence);
 
+	/**
+
+	**/
+	public function shuffle():Vector<T> {
+
+		var vec = self;
+
+		for (i in 0...length) {
+			var newIndex = i + Std.random(length - i);
+			var temp = vec.getValue(newIndex);
+			vec = vec.set(newIndex, vec.getValue(i));
+			vec = vec.set(i, temp);
+		}
+
+		return vec;
+
+	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////// SLICES /////////////////////////////////////////
@@ -978,13 +995,6 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> {
 	**/
 	public function toOrderedSet():OrderedSet<T> {
 		return new OrderedSet().addEach(values());
-	}
-
-	/**
-		Convert this Vector into a Stack<T>
-	**/
-	public function toStack():Stack<T> {
-		return new Stack().pushEach(values());
 	}
 
 	/**

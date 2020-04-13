@@ -1863,6 +1863,21 @@ class SequenceTest extends BuddySuite {
 
         });
 
+        describe("shuffle", {
+
+            // this test is disabled because it could occasionally fail...
+
+            /*
+            it("should rearrange the order of the elements", {
+
+                var seq = Sequence.make(1, 2, 3, 4);
+                seq.equals(seq.shuffle()).should.be(false);
+
+            });
+            */
+
+        });
+
         describe("iterator", {
 
             it("should iterate over each value in the sequence", {
@@ -2062,20 +2077,6 @@ class SequenceTest extends BuddySuite {
 
                 // here we are testing for identity (memory address), not equality
                 @:privateAccess (seq._this.cache == vec).should.be(true);
-
-            });
-
-        });
-
-        describe("toStack", {
-
-            it("should convert a sequence to an equivalent (reversed) Stack", {
-
-                var stack = Sequence.make(1, 2, 3, 4).toStack();
-                stack.count().should.be(4);
-                var i = 0;
-                for (v in stack)
-                    Sequence.make(1, 2, 3, 4).reverse()[i++].should.be(v);
 
             });
 
