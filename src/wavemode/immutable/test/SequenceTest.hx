@@ -139,9 +139,10 @@ class SequenceTest extends BuddySuite {
 
         describe("iterate", {
 
-            it("should create a sequence of repeated iterations", {
+            it("should create an infinite sequence of repeated iterations", {
 
-                Sequence.iterate(100, 0, x -> x + 3).equals([for (i in 0...100) i * 3]).should.be(true);
+                // how do we test for infinity? let's say, 100
+                Sequence.iterate(0, x -> x + 3).take(100).equals([for (i in 0...100) i * 3]).should.be(true);
 
             });
 
@@ -189,36 +190,12 @@ class SequenceTest extends BuddySuite {
 
         describe("@:from Vector", {
 
-            /**
-                This test is tricky, since a Vector is also an Iterable. So how do we specifically test that
-                this conversion is being used instead of the other one?
-
-                The difference with this conversion is that it creates a cacheless sequence, so that we aren't
-                unnecessarily copying the data in the Vector - Vectors are already immutable and indexable,
-                so we can just use the Vector itself as our cache.
-
-                So, for this test we just hackishly confirm that the resulting sequence has a complete cache
-                and that it is the same object as the original Vector.
-            **/
-
             it("should be equivalent to the original vector", {
 
                 var vec = Vector.fromArray([1, 2, 3, 4, 5]);
                 var seq:Sequence<Int> = vec;
 
                 seq.equals([1, 2, 3, 4, 5]).should.be(true);
-
-            });
-
-            it("should result in a cacheless sequence", {
-
-                var vec = Vector.fromArray([1, 2, 3, 4, 5]);
-                var seq:Sequence<Int> = vec;
-
-                // here we are testing for identity (memory address), not equality
-                @:privateAccess (seq._this.cache == vec).should.be(true);
-                @:privateAccess seq._this._len.should.be(5);
-                @:privateAccess seq._this.cacheComplete.should.be(true);
 
             });
 
@@ -475,6 +452,7 @@ class SequenceTest extends BuddySuite {
 
             it("should remove values which equal the given value", {
 
+                trace(Sequence.make(1, 4, 3, 4, 5).remove(4));
                 Sequence.make(1, 4, 3, 4, 5).remove(4).equals([1, 3, 5]).should.be(true);
 
             });
@@ -2067,16 +2045,6 @@ class SequenceTest extends BuddySuite {
                 var i = 0;
                 for (v in vec)
                     Sequence.make(1, 2, 3, 4)[i++].should.be(v);
-
-            });
-
-            it("optimization: if the Sequence has a complete cache, the resulting vector should simply be that cache", {
-
-                var seq = Sequence.make(1, 2, 3, 4).force();
-                var vec = seq.toVector();
-
-                // here we are testing for identity (memory address), not equality
-                @:privateAccess (seq._this.cache == vec).should.be(true);
 
             });
 

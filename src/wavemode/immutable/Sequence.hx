@@ -17,12 +17,6 @@ import stdlib.Exception;
 
 using wavemode.immutable.Functional;
 
-// TODO: cacheless iteration when created from an iterable
-// TODO: infinite iterate using above optimization
-// TODO: clean up unthrowable exceptions (calling g and n, for example)
-// TODO: begin forcing from latest cache index
-// TODO: more failure tests
-
 @:using(wavemode.immutable.Macros.SequenceMacros)
 abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
@@ -44,21 +38,15 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     /**
         Create a new Sequence from an immutable Vector.
     **/
-    @:from public static inline function fromVector<T>(list:Vector<T>):Sequence<T> {
-        var seq = new SequenceObject();
-        seq.cacheComplete = true;
-        seq.cache = list;
-        seq._len = list.length;
-        seq._hn = () -> false;
-        return seq;
-    }
+    @:from public static inline function fromVector<T>(vec:Vector<T>):Sequence<T>
+        return fromIdx(0, vec.has, vec.getValue, vec.length, true);
 
     /**
         Create a new Sequence from an Iterable.
     **/
     @:from public static inline function fromIterable<T, U:Iterable<T>>(iter:U):Sequence<T> {
         var it = iter.iterator();
-        return fromIt(it.hasNext, it.next);
+        return fromIt(0, it.hasNext, it.next, iter.iterator);
     }
 
     /**
@@ -71,42 +59,43 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         Create a new Sequence from an Iterator.
     **/
     @:from public static inline function fromIterator<T, U:Iterator<T>>(it:U):Sequence<T>
-        return fromIt(it.hasNext, it.next);
+        return fromIt(0, it.hasNext, it.next);
 
     /**
         Create an infinite sequence of a repeating `value`.
 
         If `limit` is provided, the Sequence will be finite.
     **/
-    public static function repeat<T>(value:T, ?limit:Int):Sequence<T>
+    public static function repeat<T>(value:T, ?limit:Int):Sequence<T> {
         if (limit != null)
-            return fromIdx(_->true, _->value).take(limit.unsafe());
+            return fromIdx(0, _->true, _->value, null, true).take(limit);
         else
-            return fromIdx(_->true, _->value);
+            return fromIdx(0, _->true, _->value, null, true);
+    }
 
     /**
         Create a Sequence representing numbers from `start` to `end`, inclusive.
     **/
     public static function range(start:Int, end:Int) {
-        function h(index:Int)
+
+        function h(index:Int):Bool
             if (start < end)
                 return start + index <= end;
             else
                 return start - index >= end;
 
-        function g(index:Int)
+        function g(index:Int):Int
             if (start < end)
                 return start + index;
             else
                 return start - index;
-
         var l =
             if (start < end)
                 end - start + 1;
             else
                 start - end + 1;
 
-        return fromIdx(h, g, l);
+        return fromIdx(0, h, g, l, true);
 
     }
 
@@ -114,17 +103,20 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         Create a Sequence representing `len` values starting with `start` and
         repeatedly passed through the `iterator` function.
     **/
-    public static function iterate<T>(len:Int, start:T, iterator:T->T) {
-        var index:Int = 0;
-        function hn()
-            return index < len;
-        function n() {
-            var val = start;
-            start = iterator(start);
-            ++index;
-            return val;
+    public static function iterate<T>(start:T, iterator:T->T) {
+        function r():Iterator<T> {
+            var s = start;
+            function hn()
+                return true;
+            function n() {
+                var val = s;
+                s = iterator(s);
+                return val;
+            }
+            return new FunctionalIterator(hn, n);
         }
-        return fromIt(hn, n);
+        var it = r();
+        return fromIt(0, it.hasNext, it.next, r);
     }
 
     /**
@@ -134,7 +126,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         `step` is 1 by default. `start` is 0 by default.
     **/
     public static function step(start:Int = 0, step:Int = 1)
-        return fromIdx(_->true, i->start+step*i);
+        return fromIdx(0, _->true, i->start+step*i, null, true);
     
     /**
         Create a Sequence with each of the given `sequences` concatenated together,
@@ -142,46 +134,46 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public static function join<T>(sequences:Sequence<Sequence<T>>, separator:T):Sequence<T> {
 
-        function h(index:Int):Bool {
-            var seqIndex = 0;
-            while (sequences.has(seqIndex)) {
-                var seq = sequences[seqIndex];
-                var c = seq.count();
-                if (index < c) {
-                    return true;
-                } else if (index == c) {
-                    if (sequences.has(seqIndex + 1))
-                        return true;
-                    else
-                        return false;
-                } else if (index > c) {
-                    ++seqIndex;
-                    index -= (c + 1);
+        var gindex:Int = 0;
+        var nextVal:T;
+        var valid:Bool = false;
+
+        function gv():Void
+            if (!valid) {
+                var index:Int = gindex++;
+                var seqIndex:Int = 0;
+                while (sequences._has(seqIndex)) {
+                    var seq = sequences._get(seqIndex);
+                    var c:Int = seq.count();
+                    if (index < c) {
+                        nextVal = seq.cacheGet(index);
+                        valid = true;
+                        ++index;
+                        return;
+                    } else if (index == c && sequences._has(seqIndex + 1)) {
+                        nextVal = separator;
+                        valid = true;
+                        ++index;
+                        return;
+                    } else {
+                        ++seqIndex;
+                        index -= (c + 1);
+                    }
                 }
             }
-            return false;
+
+        function hn():Bool {
+            gv();
+            return valid;
         }
 
-        function g(index:Int):T {
-            var seqIndex = 0;
-            while (sequences.has(seqIndex)) {
-                var seq = sequences[seqIndex];
-                var c = seq.count();
-                if (index < c) {
-                    return seq[index];
-                } else if (index == c) {
-                    if (sequences.has(seqIndex + 1))
-                        return separator;
-                } else if (index > c) {
-                    ++seqIndex;
-                    index -= (c + 1);
-                }
-            }
-            throw new Exception('index $index out of bounds for Sequence');
-
+        function n():T {
+            gv();
+            valid = false;
+            return nextVal;
         }
 
-        return fromIdx(h, g);
+        return fromIt(0, hn, n);
 
     }
 
@@ -222,8 +214,8 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     /**
         Returns true if this Sequence is empty.
     **/
-    public function empty():Bool
-        return !has(0);
+    public inline function empty():Bool
+        return !_has(0);
 
     /**
         Returns an empty Sequence.
@@ -249,12 +241,10 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function g(index:Int):T {
             getCount();
-            if (index >= length)
-                throw new Exception('index $index out of bounds for Sequence');
-            return getValue(length-index-1);
+            return _get(length-index-1);
         }
 
-        return fromIdx(h, g, this._len);
+        return fromIdx(this._stackSize, h, g, this._len, true);
 
     }
 
@@ -268,30 +258,30 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     public function sort(f:(T,T)->Int):Sequence<T> {
 
         var seq:Array<T>;
-        var index = -1;
+        var valid = false;
 
-        function g():Void
-            if (index == -1) {
-                var c = count();
-                seq = [];
-                //seq.resize(c);
-                for (i in 0...c)
-                    seq.push(getValue(i));
-                seq.sort(f);
-                index = 0;
-            }
-
-        function hn():Bool {
-            g();
-            return index < seq.length;
+        function gv():Void {
+            var c = count();
+            seq = [];
+            for (i in 0...c)
+                seq.push(_get(i));
+            seq.sort(f);
+            valid = true;
         }
 
-        function n():T {
-            g();
-            return seq[index++];
+        function h(i:Int):Bool {
+            if (!valid)
+                gv();
+            return i < count();
         }
 
-        return fromIt(hn, n);
+        function g(i:Int):T {
+            if (!valid)
+                gv();
+            return seq[i];
+        }
+
+        return fromIdx(this._stackSize, h, g, this._len, true);
 
     }
 
@@ -328,18 +318,18 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             if (!valid)
                 gv();
             if (end == null)
-                return has(pos+index);
+                return _has(pos+index);
             else
-                return (pos+index)<end.unsafe() && has(pos+index); 
+                return (pos+index)<end.unsafe() && _has(pos+index); 
         }
 
         function g(index:Int):T {
             if (!valid)
                 gv();
-            return getValue(pos+index);
+            return _get(pos+index);
         }
 
-        return fromIdx(h, g);
+        return fromIdx(this._stackSize, h, g);
 
     }
 
@@ -366,18 +356,18 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             if (!valid)
                 gv();
             if (len == null)
-                return has(pos+index);
+                return _has(pos+index);
             else
-                return index<len.unsafe() && has(pos+index); 
+                return index<len.unsafe() && _has(pos+index); 
         }
 
         function g(index:Int):T {
             if (!valid)
                 gv();
-            return getValue(pos+index);
+            return _get(pos+index);
         }
 
-        return fromIdx(h, g);
+        return fromIdx(this._stackSize, h, g);
 
     }
 
@@ -390,29 +380,27 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var nextVal:T;
         var valid:Bool = false;
 
-        function getNext():Void
+        function gv():Void
             while (true)
                 if (!valid) {
-                    if (!has(index))
+                    if (!_has(index))
                         return;
-                    nextVal = getValue(index++);
+                    nextVal = _get(index++);
                     valid = predicate(nextVal);
                 } else break;
 
-        function hasNext():Bool {
-            getNext();
+        function hn():Bool {
+            gv();
             return valid;
         }
 
-        function next():T {
-            getNext();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
+        function n():T {
+            gv();
             valid = false;
             return nextVal;
         }
 
-        return fromIt(hasNext, next);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -425,29 +413,27 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var nextVal:T;
         var valid:Bool = false;
 
-        function getNext():Void
+        function gv():Void
             while (true)
                 if (!valid) {
-                    if (!has(index))
+                    if (!_has(index))
                         return;
-                    nextVal = getValue(index++);
+                    nextVal = _get(index++);
                     valid = nextVal != value;
                 } else break;
 
-        function hasNext():Bool {
-            getNext();
+        function hn():Bool {
+            gv();
             return valid;
         }
 
-        function next():T {
-            getNext();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
+        function n():T {
+            gv();
             valid = false;
             return nextVal;
         }
 
-        return fromIt(hasNext, next);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -463,29 +449,27 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var nextVal:T;
         var valid:Bool = false;
 
-        function getNext():Void
+        function gv():Void
             while (true)
                 if (!valid) {
-                    if (!has(index))
+                    if (!_has(index))
                         return;
-                    nextVal = getValue(index++);
+                    nextVal = _get(index++);
                     valid = values.find(nextVal) == -1;
                 } else break;
 
-        function hasNext():Bool {
-            getNext();
+        function hn():Bool {
+            gv();
             return valid;
         }
 
-        function next():T {
-            getNext();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
+        function n():T {
+            gv();
             valid = false;
             return nextVal;
         }
 
-        return fromIt(hasNext, next);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -499,19 +483,20 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function h(i:Int):Bool {
             if (i < index)
-                return has(i);
+                return _has(i);
             else
-                return has(i+1);
+                return _has(i+1);
         }
 
         function g(i:Int) {
             if (i < index)
-                return getValue(i);
+                return _get(i);
             else
-                return getValue(i+1);
+                return _get(i+1);
         }
 
-        return fromIdx(h, g);
+        var len:Null<Int> = if (this._len != null) this._len.unsafe() - 1 else null;
+        return fromIdx(this._stackSize, h, g, len);
 
     }
 
@@ -527,33 +512,31 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var nextVal:T;
         var valid:Bool = false;
 
-        function getNext():Void
+        function gv():Void
             while (true)
                 if (!valid) {
-                    if (!has(index))
+                    if (!_has(index))
                         return;
                     else if (indices.find(index) != -1) {
                         ++index;
                         continue;
                     }
-                    nextVal = getValue(index++);
+                    nextVal = _get(index++);
                     valid = true;
                 } else break;
 
-        function hasNext():Bool {
-            getNext();
+        function hn():Bool {
+            gv();
             return valid;
         }
 
-        function next():T {
-            getNext();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
+        function n():T {
+            gv();
             valid = false;
             return nextVal;
         }
 
-        return fromIt(hasNext, next);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -580,15 +563,15 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function h(index:Int):Bool {
             getStart();
-            return has(index+start);
+            return _has(index+start);
         }
 
         function g(index:Int):T {
             getStart();
-            return getValue(index+start);
+            return _get(index+start);
         }
 
-        return fromIdx(h, g);
+        return fromIdx(this._stackSize, h, g);
 
     }
 
@@ -599,9 +582,9 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     public function takeWhile(predicate:T->Bool):Sequence<T> {
 
         function h(index:Int):Bool
-            return has(index) && predicate(getValue(index));
+            return _has(index) && predicate(_get(index));
 
-        return fromIdx(h, getValue);
+        return fromIdx(this._stackSize, h, _get);
 
     }
 
@@ -612,9 +595,9 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     public function takeUntil(predicate:T->Bool):Sequence<T> {
 
         function h(index:Int):Bool
-            return has(index) && !predicate(getValue(index));
+            return _has(index) && !predicate(_get(index));
 
-        return fromIdx(h, getValue);
+        return fromIdx(this._stackSize, h, _get);
 
     }
 
@@ -641,22 +624,22 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         function getStart():Void
             if (start == -1) {
                 start = 0;
-                while (has(start) && predicate(getValue(start)))
+                while (_has(start) && predicate(_get(start)))
                     ++start;
             }
 
 
         function h(index:Int):Bool {
             getStart();
-            return has(index+start);
+            return _has(index+start);
         }
 
         function g(index:Int):T {
             getStart();
-            return getValue(index+start);
+            return _get(index+start);
         }
 
-        return fromIdx(h, g);
+        return fromIdx(this._stackSize, h, g);
 
     }
 
@@ -671,22 +654,22 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         function getStart():Void
             if (start == -1) {
                 start = 0;
-                while (has(start) && !predicate(getValue(start)))
+                while (_has(start) && !predicate(_get(start)))
                     ++start;
             }
 
 
         function h(index:Int):Bool {
             getStart();
-            return has(index+start);
+            return _has(index+start);
         }
 
         function g(index:Int):T {
             getStart();
-            return getValue(index+start);
+            return _get(index+start);
         }
 
-        return fromIdx(h, g);
+        return fromIdx(this._stackSize, h, g);
 
     }
 
@@ -699,35 +682,8 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     /**
         Returns a new Sequence with each element passed through `mapper`.
     **/
-    public function map<M>(mapper:T->M):Sequence<M> {
-        var index:Int = 0;
-        var valid:Bool = false;
-        var nextVal:M;
-
-        function getNext():Void
-            if (!valid)
-                if (!has(index))
-                    return;
-                else {
-                    nextVal = mapper(getValue(index++));
-                    valid = true;
-                }
-
-        function hasNext():Bool {
-            getNext();
-            return valid;
-        }
-
-        function next():M {
-            getNext();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
-            valid = false;
-            return nextVal;
-        }
-
-        return fromIt(hasNext, next);
-    }
+    public function map<M>(mapper:T->M):Sequence<M>
+        return fromIdx(this._stackSize, _has, i->mapper(_get(i)), this._len);
 
     /**
         Returns a new Sequence with each index and corresponding element passed
@@ -739,30 +695,28 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var valid:Bool = false;
         var nextVal:M;
 
-        function getNext():Void
+        function gv():Void
             if (!valid)
-                if (!has(index))
+                if (!_has(index))
                     return;
                 else {
-                    nextVal = mapper(index, getValue(index));
+                    nextVal = mapper(index, _get(index));
                     ++index;
                     valid = true;
                 }
 
-        function hasNext():Bool {
-            getNext();
+        function hn():Bool {
+            gv();
             return valid;
         }
 
-        function next():M {
-            getNext();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
+        function n():M {
+            gv();
             valid = false;
             return nextVal;
         }
 
-        return fromIt(hasNext, next);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -784,12 +738,12 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var iterValid:Bool = false;
         var valid:Bool = false;
 
-        function getNextElement():Void
+        function gv():Void
             while (true) {
                 if (!iterValid) {
-                    if (!has(index))
+                    if (!_has(index))
                         return;
-                    nextIter = mapper(getValue(index++)).iterator();
+                    nextIter = mapper(_get(index++)).iterator();
                     iterValid = true;
                 }
                 if (!nextIter.hasNext()) {
@@ -802,20 +756,18 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
                 } else break;
             }
 
-        function hasNext():Bool {
-            getNextElement();
+        function hn():Bool {
+            gv();
             return valid;
         }
 
-        function next():N {
-            getNextElement();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
+        function n():N {
+            gv();
             valid = false;
             return nextElement;
         }
 
-        return fromIt(hasNext, next);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -825,7 +777,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     public function set(nth:Int, value:T):Sequence<T> {
         if (nth < 0 || (this._len != null && this._len.unsafe() <= nth))
             return this;
-        return fromIdx(has, i -> if (i == nth) value else getValue(i), this._len);
+        return fromIdx(this._stackSize, _has, i -> if (i == nth) value else _get(i), this._len);
     }
 
     /**
@@ -839,13 +791,13 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function g(i:Int):T {
             var rpl = indices.find(i);
-            if (rpl != -1 && values.has(rpl))
-                return values.getValue(rpl);
+            if (rpl != -1 && values._has(rpl))
+                return values._get(rpl);
             else
-                return getValue(i);
+                return _get(i);
         }
 
-        return fromIdx(has, g, this._len);
+        return fromIdx(this._stackSize, _has, g, this._len);
 
     }
 
@@ -864,29 +816,27 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function gv():Void
             if (!valid) {
-                if (!has(index))
+                if (!_has(index))
                     return;
-                nextVal = getValue(index);
+                nextVal = _get(index);
                 if (nth == index)
                     nextVal = (updater(nextVal));
                 ++index;
                 valid = true;
             }
 
-        function hasNext():Bool {
+        function hn():Bool {
             gv();
             return valid;
         }
 
-        function next():T {
+        function n():T {
             gv();
-            if (!valid)
-                throw new Exception("attempt to read exmpty Iterator");
             valid = false;
             return nextVal;
         }
 
-        return fromIt(hasNext, next);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -905,9 +855,9 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function gv():Void
             if (!valid) {
-                if (!has(index))
+                if (!_has(index))
                     return;
-                nextVal = getValue(index);
+                nextVal = _get(index);
                 var nth = indices.find(index);
                 if (nth != -1)
                     nextVal = (updater(nextVal));
@@ -915,20 +865,18 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
                 valid = true;
             }
 
-        function hasNext():Bool {
+        function hn():Bool {
             gv();
             return valid;
         }
 
-        function next():T {
+        function n():T {
             gv();
-            if (!valid)
-                throw new Exception("attempt to read exmpty Iterator");
             valid = false;
             return nextVal;
         }
 
-        return fromIt(hasNext, next);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -936,8 +884,8 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         Returns a new Sequence with all instances of `oldVal` replaced by `newVal`.
     **/
     public inline function replace(oldVal:T, newVal:T):Sequence<T>
-        return fromIdx(has, i -> {
-            var value = getValue(i);
+        return fromIdx(this._stackSize, _has, i -> {
+            var value = _get(i);
             if (value == oldVal)
                 newVal;
             else
@@ -953,11 +901,11 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public function replaceEach(oldVals:Sequence<T>, newVals:Sequence<T>):Sequence<T> {
 
-        return fromIdx(has, i -> {
-            var value = getValue(i);
+        return fromIdx(this._stackSize, _has, i -> {
+            var value = _get(i);
             var index = oldVals.find(value);
-            if (index != -1 && newVals.has(index))
-                newVals.getValue(index);
+            if (index != -1 && newVals._has(index))
+                newVals._get(index);
             else
                 value;
         }, this._len);
@@ -996,10 +944,10 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var readIndex:Int = 0;
 
         function categorizeNext():Bool
-            if (!has(readIndex)) {
+            if (!_has(readIndex)) {
                 return false;
             } else {
-                var value = getValue(readIndex++);
+                var value = _get(readIndex++);
                 var cat = grouper(value);
                 var catIndex = categories.indexOf(cat);
                 if (catIndex == -1) {
@@ -1033,21 +981,19 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
                 if (nextVal.empty())
                     nextVal = getNth(nth, index++);
 
-            function hasNext():Bool {
+            function hn():Bool {
                 gv();
                 return !nextVal.empty();
             }
 
-            function next():T {
+            function n():T {
                 gv();
-                if (nextVal.empty())
-                    throw new Exception("attempt to read from empty Iterator");
                 var val = nextVal.unsafe();
                 nextVal = null;
                 return val;
             }
 
-            return fromIt(hasNext, next);
+            return fromIt(this._stackSize, hn, n);
 
         }
 
@@ -1058,21 +1004,19 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             if (nextGroup == null)
                 nextGroup = getSequence(groupIndex++);
 
-        function hasNext():Bool {
+        function hn():Bool {
             getGroup();
             return nextGroup != null;
         }
 
-        function next():Sequence<T> {
+        function n():Sequence<T> {
             getGroup();
-            if (nextGroup == null)
-                throw new Exception("attempt to read from empty Iterator");
             var seq = nextGroup.unsafe();
             nextGroup = null;
             return seq;
         }
 
-        return fromIt(hasNext, next);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -1093,7 +1037,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var index:Int = 0;
 
         while (has(index))
-            initialValue = foldFn(initialValue, getValue(index++));
+            initialValue = foldFn(initialValue, cacheGet(index++));
 
         return initialValue;
 
@@ -1110,7 +1054,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var index:Int = 0;
 
         while (has(index))
-            initialValue = foldFn(initialValue, getValue(index++));
+            initialValue = foldFn(initialValue, cacheGet(index++));
 
         return initialValue;
 
@@ -1131,10 +1075,10 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             throw new Exception("attempt to reduce empty Sequence");
 
         var index:Int = 1;
-        var value:T = getValue(0);
+        var value:T = _get(0);
 
         while (has(index))
-            value = reducer(value, getValue(index++));
+            value = reducer(value, cacheGet(index++));
 
         return value;
 
@@ -1157,10 +1101,10 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         var c:Int = count();
         var index:Int = c - 2;
-        var value:T = getValue(c - 1);
+        var value:T = cacheGet(c - 1);
 
         while (has(index))
-            value = reducer(value, getValue(index--));
+            value = reducer(value, cacheGet(index--));
 
         return value;
 
@@ -1192,7 +1136,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         if (this._len != null)
             return this._len.sure();
 
-        var i = 0;
+        var i = this.cache.length;
         while (has(i))
             ++i;
 
@@ -1208,7 +1152,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var index:Int = 0;
 
         while (has(index))
-            if (!predicate(getValue(index++)))
+            if (!predicate(cacheGet(index++)))
                 return false;
 
         return true;
@@ -1223,7 +1167,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var index:Int = 0;
 
         while (has(index))
-            if (predicate(getValue(index++)))
+            if (predicate(cacheGet(index++)))
                 return true;
 
         return false;
@@ -1243,15 +1187,15 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             return toString() == sequence.toString();
 
         var index:Int = 0;
-        var seq:Iterator<T> = sequence.iterator();
+        var it:Iterator<T> = sequence.iterator();
 
-        while (has(index) && seq.hasNext()) {
-            if (getValue(index) != seq.next())
+        while (has(index) && it.hasNext()) {
+            if (cacheGet(index) != it.next())
                 return false;
             ++index;
         }
 
-        return !has(index) && !seq.hasNext();
+        return !has(index) && !it.hasNext();
 
     }
 
@@ -1271,7 +1215,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             index = start;
 
         while (has(index)) {
-            if (getValue(index) == value)
+            if (cacheGet(index) == value)
                 return index;
             ++index;
         }
@@ -1307,7 +1251,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             index = start;
 
         while (has(index)) {
-            if (predicate(getValue(index)))
+            if (predicate(cacheGet(index)))
                 return index;
             ++index;
         }
@@ -1322,7 +1266,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     public function forEach(sideEffect:T->Void):Void {
         var index:Int = 0;
         while (has(index))
-            sideEffect(getValue(index++));
+            sideEffect(cacheGet(index++));
     }
 
     /**
@@ -1334,7 +1278,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var index:Int = 0;
 
         while (has(index))
-            if (!sideEffect(getValue(index++)))
+            if (!sideEffect(cacheGet(index++)))
                 break;
 
         return index;
@@ -1358,8 +1302,8 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function gv()
             if (!valid) {
-                if (has(index)) {
-                    nextVal = getValue(index);
+                if (_has(index)) {
+                    nextVal = _get(index);
                 } else if (!done) {
                     nextVal = value;
                     done = true;
@@ -1375,13 +1319,11 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function n():T {
             gv();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
             valid = false;
             return nextVal;
         }
 
-        return fromIt(hn, n);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -1397,17 +1339,8 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         Returns a new Sequence with the last value removed.
     **/
     public function pop():Sequence<T> {
-
-        var index:Int = 0;
-
-        function hn():Bool
-            return has(index) && has(index+1);
-
-        function n():T
-            return getValue(index++);
-
-        return fromIt(hn, n);
-
+        var len:Null<Int> = if (this._len != null) this._len.unsafe() - 1 else null;
+        return fromIdx(this._stackSize, i -> _has(i) && _has(i+1), _get, len);
     }
 
     /**
@@ -1416,15 +1349,17 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     public function unshift(value:T):Sequence<T> {
 
         function h(index:Int):Bool
-            return index == 0 || has(index-1);
+            return index == 0 || _has(index-1);
 
         function g(index:Int):T
             if (index == 0)
                 return value;
             else
-                return getValue(index-1);
+                return _get(index-1);
 
-        return fromIdx(h, g);
+        var len:Null<Int> = if (this._len != null) this._len.unsafe() + 1 else null;
+
+        return fromIdx(this._stackSize, h, g, len);
 
     }
 
@@ -1446,21 +1381,23 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function h(i:Int):Bool
             if (i < index)
-                return has(i);
+                return _has(i);
             else if (i > index)
-                return has(i-1);
+                return _has(i-1);
             else
                 return true;
         
         function g(i:Int):T
             if (i < index)
-                return getValue(i);
+                return _get(i);
             else if (i > index)
-                return getValue(i-1);
+                return _get(i-1);
             else
                 return value;
 
-        return fromIdx(h, g);
+        var len:Null<Int> = if (this._len != null) this._len.unsafe() + 1 else null;
+
+        return fromIdx(this._stackSize, h, g, len);
 
     }
 
@@ -1476,21 +1413,21 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function h(i:Int):Bool
             if (i < index)
-                return has(i);
-            else if (values.has(i - index))
+                return _has(i);
+            else if (values._has(i - index))
                 return true;
             else
-                return has(i - values.count());
+                return _has(i - values.count());
         
         function g(i:Int):T
             if (i < index)
-                return getValue(i);
-            else if (values.has(i - index))
+                return _get(i);
+            else if (values._has(i - index))
                 return values[i - index];
             else
-                return getValue(i - values.count());
+                return _get(i - values.count());
 
-        return fromIdx(h, g);
+        return fromIdx(this._stackSize, h, g);
 
     }
 
@@ -1499,43 +1436,41 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public function concat(values:Sequence<T>):Sequence<T> {
 
-        var index:Int = 0;
-        var nextVal:T;
-        var valid = false;
-        var done = false;
+        var it1 = iterator(), it2 = values.iterator();
+        var nextValue;
+        var valid = false, done1 = false, done2 = false;
 
-        function gv():Void
-            if (!valid) {
-                if (done || !has(index)) {
-                    if (!done) {
-                        done = true;
-                        index = 0;
-                    }
-                    if (!values.has(index))
-                        return;
-                    nextVal = values.getValue(index++);
+        function gv() {
+            if (!valid && !done1) {
+                if (it1.hasNext()) {
+                    nextValue = it1.next();
+                    valid = true;
                 } else {
-                    if (!has(index))
-                        return;
-                    nextVal = getValue(index++);
+                    done1 = true;
                 }
-                valid = true;
             }
+            if (!valid && !done2) {
+                if (it2.hasNext()) {
+                    nextValue = it2.next();
+                    valid = true;
+                } else {
+                    done2 = true;
+                }
+            }
+        }
 
-        function hn():Bool {
+        function hn() {
             gv();
             return valid;
         }
 
-        function n():T {
+        function n() {
             gv();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
             valid = false;
-            return nextVal;
+            return nextValue;
         }
 
-        return fromIt(hn, n);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -1558,23 +1493,23 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             while (true)
                 if (!valid) {
                     if (seqIndex == -1) {
-                        if (!has(index)) {
+                        if (!_has(index)) {
                             ++seqIndex;
                             index = 0;
                         } else {
-                            nextVal = getValue(index);
+                            nextVal = _get(index);
                             valid = true;
                             ++index;
                         }
                     } else {
-                        if (!sequences.has(seqIndex))
+                        if (!sequences._has(seqIndex))
                             return;
                         var seq = sequences.getValue(seqIndex);
-                        if (!seq.has(index)) {
+                        if (!seq._has(index)) {
                             ++seqIndex;
                             index = 0;
                         } else {
-                            nextVal = seq.getValue(index);
+                            nextVal = seq._get(index);
                             valid = true;
                             ++index;
                         }
@@ -1588,13 +1523,11 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function n():T {
             gv();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
             valid = false;
             return nextVal;
         }
 
-        return fromIt(hn, n);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -1607,12 +1540,12 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     public function zip(other:Sequence<T>):Sequence<Sequence<T>> {
 
         function h(index:Int):Bool
-            return has(index) && other.has(index);
+            return _has(index) && other._has(index);
 
         function g(index:Int):Sequence<T>
-            return fromIdx(i -> i < 2, i -> if (i == 0) getValue(index) else other.getValue(index));
+            return fromIdx(this._stackSize, i -> i < 2, i -> if (i == 0) _get(index) else other._get(index));
 
-        return fromIdx(h, g);
+        return fromIdx(this._stackSize, h, g);
 
     }
 
@@ -1625,12 +1558,12 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     public function zipEach(others:Sequence<Sequence<T>>):Sequence<Sequence<T>> {
 
         function h(index:Int):Bool
-            return others.every(s -> s.has(index));
+            return others.every(s -> s._has(index));
 
         function g(index:Int):Sequence<T>
-            return others.map(s -> s.getValue(index)).unshift(getValue(index));
+            return others.map(s -> s._get(index)).unshift(_get(index));
 
-        return fromIdx(h, g);
+        return fromIdx(this._stackSize, h, g);
 
     }
 
@@ -1641,17 +1574,17 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function h(index:Int):Bool
             if (index % 2 == 0)
-                return has(Std.int(index / 2));
+                return _has(Std.int(index / 2));
             else
-                return has(Std.int((index + 1) / 2));
+                return _has(Std.int((index + 1) / 2));
 
         function g(index:Int):T
             if (index % 2 == 0)
-                return getValue(Std.int(index / 2));
+                return _get(Std.int(index / 2));
             else
                 return separator;
 
-        return fromIdx(h, g);
+        return fromIdx(this._stackSize, h, g);
 
     }
 
@@ -1675,34 +1608,34 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
                 if (!valid) {
                     if (thisLength != null) {
                         var len:Int = thisLength.unsafe(), i = index - len;
-                        if (!other.has(i))
+                        if (!other._has(i))
                             return;
-                        nextVal = other.getValue(i);
+                        nextVal = other._get(i);
                         valid = true;
                         ++index;
                     } else if (otherLength != null) {
                         var len:Int = otherLength.unsafe(), i = index - len;
-                        if (!has(i))
+                        if (!_has(i))
                             return;
-                        nextVal = getValue(i);
+                        nextVal = _get(i);
                         valid = true;
                         ++index;
                     } else if (index % 2 == 0) {
                         var i = Std.int(index / 2);
-                        if (!has(i)) {
+                        if (!_has(i)) {
                             thisLength = i;
                             continue;
                         }
-                        nextVal = getValue(i);
+                        nextVal = _get(i);
                         valid = true;
                         ++index;
                     } else {
                         var i = Std.int((index - 1) / 2);
-                        if (!other.has(i)) {
+                        if (!other._has(i)) {
                             otherLength = i;
                             continue;
                         }
-                        nextVal = other.getValue(i);
+                        nextVal = other._get(i);
                         valid = true;
                         ++index;
                     }
@@ -1715,13 +1648,11 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function n():T {
             gv();
-            if (!valid)
-                throw new Exception("attempt to read from empty Iterator");
             valid = false;
             return nextVal;
         }
 
-        return fromIt(hn, n);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -1741,8 +1672,8 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
                 if (!valid) {
                     if (done) {
                         return;
-                    } else if (has(index)) {
-                        var value = getValue(index);
+                    } else if (_has(index)) {
+                        var value = _get(index);
                         if (value == element) {
                             nextSeq = slice(seqIndex, index);
                             valid = true;
@@ -1766,13 +1697,11 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function n():Sequence<T> {
             gv();
-            if(!valid)
-                throw new Exception("attempt to read from empty Iterator");
             valid = false;
             return nextSeq;
         }
 
-        return fromIt(hn, n);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -1792,8 +1721,8 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
                 if (!valid) {
                     if (done) {
                         return;
-                    } else if (has(index)) {
-                        var value = getValue(index);
+                    } else if (_has(index)) {
+                        var value = _get(index);
                         if (predicate(value)) {
                             nextSeq = slice(seqIndex, index);
                             valid = true;
@@ -1817,13 +1746,11 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function n():Sequence<T> {
             gv();
-            if(!valid)
-                throw new Exception("attempt to read from empty Iterator");
             valid = false;
             return nextSeq;
         }
 
-        return fromIt(hn, n);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -1843,9 +1770,9 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             if (!valid) {
                 if (done) {
                     return;
-                } else if (sortedIndices.has(seqIndex)) {
+                } else if (sortedIndices._has(seqIndex)) {
                     var index = sortedIndices[seqIndex];
-                    if (has(index) || has(index - 1)) {
+                    if (_has(index) || _has(index - 1)) {
                         nextIndex = index;
                         valid = true;
                     } else {
@@ -1868,8 +1795,6 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function n():Sequence<T> {
             gv();
-            if (!valid)
-                throw new Exception("attempt to read from empty iterator");
             valid = false;
             var result:Sequence<T>;
             if (nextIndex == -1)
@@ -1880,7 +1805,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             return result;
         }
         
-        return fromIt(hn, n);
+        return fromIt(this._stackSize, hn, n);
 
     }
 
@@ -1889,27 +1814,18 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public function shuffle():Sequence<T> {
 
-        var idxs:Array<Int>;
-        var valid:Bool = false;
+        var index:Int = 0;
+        var seq:Sequence<T> = this;
 
-        function g(index:Int):T {
-
-            if (!valid) {
-                idxs = [for (i in indices()) i];
-                for (i in 0...count()) {
-                    var newIndex = i + Std.random(count() - i);
-                    var temp = idxs[newIndex];
-                    idxs[newIndex] = idxs[i];
-                    idxs[i] = temp;
-                }
-                valid = true;
-            }
-
-            return getValue(idxs[index]);
-
+        function n():T {
+            var newIndex = index + Std.random(count() - index);
+            var temp = seq._get(index);
+            seq = seq.set(index, seq._get(newIndex));
+            seq = seq.set(newIndex, temp);
+            return seq._get(index++);
         }
 
-        return fromIdx(has, g, this._len);
+        return fromIt(this._stackSize, ()->_has(index), n);
 
     }
 
@@ -1922,7 +1838,10 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         An iterator over all of this Sequence's elements.
     **/
     public inline function iterator():Iterator<T>
-        return new SequenceIterator(this);
+        if (this._r != null)
+            return this._r();
+        else
+            return new SequenceIterator(this);
 
     /**
         An iterator over all of this Sequence's index-value pairs.
@@ -1955,7 +1874,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var result:Array<T> = [];
         var index:Int = 0;
         while (has(index))
-            result.push(getValue(index++));
+            result.push(cacheGet(index++));
         return result;
     }
 
@@ -1987,8 +1906,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         Convert this Sequence to an immutable Vector of its values.
     **/
     public inline function toVector():Vector<T>
-        // we can avoid re-iterating through this sequence if all values are already cached
-        return force()._this.cache.unsafe();
+        return new Vector().pushEach(self);
 
     /**
         Retrieve a string representation of the Sequence.
@@ -2001,7 +1919,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var index:Int = 0;
         while (has(index)) {
             cut = true;
-            result.add(' ${getValue(index++)},');
+            result.add(' ${cacheGet(index++)},');
         }
 
         return
@@ -2012,12 +1930,6 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
             + " }";
     }
 
-    /**
-        Returns an Iterable representation of this Sequence.
-    **/
-    @:to public inline function toIterable():Iterable<T>
-        return this;
-
     /////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////// INTERNALS ///////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -2026,89 +1938,89 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         Evaluates and caches every value in the Sequence.
     **/
     public function force():Sequence<T> {
-        if (isIterating())
-            count();
-        else {
-            // this will turn a cacheless sequence into a cached one
-            this.cache = new Vector();
-            var index:Int = 0;
-            while (has(index))
-                this.cache = this.cache.sure().push(getValue(index++));
-            this._len = index;
-            this.cacheComplete = true;
-            this._g = null;
-            this._h = null;
-            this._hn = () -> false;
-        }
+        count();
         return this;
     }
 
     private inline function cacheExpand(index:Int):Bool {
 
-        if (index < 0)
+        if (index < 0 || this._hn == null)
             return false;
 
-        if (isIterating()) {
-            if (this.cacheComplete)
-                return cachedLength() > index;
+        if (this.cacheComplete)
+            return this.cache.length > index;
 
-            while (cachedLength() <= index && 
-                if (this._hn()) {
-                    true;
-                } else {
-                    this._hn = () -> false;
-                    this._n = null;
-                    this.cacheComplete = true;
-                    this._len = cachedLength();
-                    false;
-                })
-            {
-                this.cache = this.cache.unsafe().push(this._n.unsafe()());
-            }
+        while (this.cache.length <= index && 
+            if (this._hn()) {
+                true;
+            } else {
+                this._hn = () -> false;
+                this._n = null;
+                this._r = null;
+                this.cacheComplete = true;
+                this._len = this.cache.length;
+                this._stackSize = 0;
+                false;
+            })
+        {
+            this.cache.unsafe().push(this._n.unsafe()());
+        }
 
-            return cachedLength() > index;
-
-        } else if (isIndexed()) {
-
-            return this._h(index);
-
-        } else return false;
+        return this.cache.length > index;
 
     }
 
-    private inline function cachedLength():Int
-        return this._len.or(this.cache.unsafe().length);
-
     private inline function cacheGet(index:Int):T
-        if (isIterating())
-            return this.cache.unsafe().getValue(index);
-        else
-            return this._g.unsafe()(index);
+        return this.cache[index];
 
-    private inline function isIndexed():Bool
-        return this._h != null;
-
-    private inline function isIterating():Bool
-        return this._hn != null;
-
-    private static inline function fromIt<T>(hn:()->Bool, n:()->T):Sequence<T> {
-        // create a cached sequence from an iterator
+    private static inline function fromIt<T>(s:Int, hn:()->Bool, n:()->T, ?r:()->Iterator<T>):Sequence<T> {
         var seq = new SequenceObject();
         seq._hn = hn;
         seq._n = n;
-        seq.cache = new Vector();
-        return seq;
+        seq._r = r;
+        seq._stackSize = s + 1;
+        if (s > STACK_LIMIT)
+            return (seq:Sequence<T>).force();
+        else
+            return seq;
     }
 
-    private static inline function fromIdx<T>(h:Int->Bool, g:Int->T, ?len:Int):Sequence<T> {
-        // create a cacheless sequence
+    private static inline function fromIdx<T>(s:Int, h:Int->Bool, g:Int->T, ?len:Int, retrievable:Bool = false):Sequence<T> {
         var seq = new SequenceObject();
-        seq._h = h;
+        var index:Int = 0;
+        function hn()
+            return h(index);
+        function n()
+            return g(index++);
+        seq._hn = hn;
+        seq._n = n;
         seq._g = g;
+        seq._h = h;
+        if (retrievable) {
+            seq._r = () -> {
+                var i = 0;
+                return new FunctionalIterator(() -> seq._h(i), () -> seq._g(i++));
+            }
+        }
         seq._len = len;
-        seq.cacheComplete = len != null;
-        return seq;
+        seq._stackSize = s + 2;
+        if (s > STACK_LIMIT)
+            return (seq:Sequence<T>).force();
+        else
+            return seq;
     }
+
+    private inline function _has(index:Int)
+        if (this._h != null)
+            return this._h.unsafe()(index);
+        else
+            return has(index);
+
+    private inline function _get(index:Int)
+        if (this._g != null)
+            return this._g.unsafe()(index);
+        else
+            return getValue(index);
 
     private var self(get, never):Sequence<T>;
     private inline function get_self() return this;
@@ -2116,19 +2028,23 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     private var _this(get, never):SequenceObject<T>;
     private inline function get__this() return this;
 
+    private static inline final STACK_LIMIT = 256;
+
 }
 
 private class SequenceObject<T> {
 
-    public inline function new() {}
+    public inline function new() cache = [];
 
     public var cacheComplete:Bool = false;
 
-    public var cache:Null<Vector<T>>;
+    public var cache:Array<T>;
     public var _hn:Null<()->Bool>;
     public var _n:Null<()->T>;
     public var _h:Null<Int->Bool>;
     public var _g:Null<Int->T>;
+    public var _r:Null<()->Iterator<T>>;
+    public var _stackSize:Int = 0;
 
     public var _len:Null<Int>;
 
@@ -2153,14 +2069,11 @@ private class SequenceIterator<T> {
         sequence = seq;
     }
 
-    public function hasNext():Bool
+    public inline function hasNext():Bool
         return sequence.has(index);
 
-    public function next():T
-        if (!sequence.has(index))
-            throw new Exception("attempt to read from empty Iterator");
-        else
-            return sequence.getValue(index++); 
+    public inline function next():T
+        return sequence.getValue(index++); 
 
 }
 
@@ -2183,4 +2096,17 @@ private class SequenceKeyValueIterator<T> {
         else
             return { key: index, value: sequence.getValue(index++) }; 
 
+}
+
+private class FunctionalIterator<T> {
+    public inline function hasNext()
+        return _hn();
+    public inline function next()
+        return _n();
+    private var _hn:()->Bool;
+    private var _n:()->T;
+    public inline function new(hn, n) {
+        _hn = hn;
+        _n = n;
+    }
 }

@@ -6,6 +6,8 @@
  *
  */
 
+// TODO: Functional test suite
+
 package wavemode.immutable.test;
 
 import buddy.BuddySuite;

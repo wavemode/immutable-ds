@@ -21,8 +21,6 @@ import stdlib.Exception;
 
 using wavemode.immutable.Functional;
 
-// TODO: toIterable
-
 abstract Vector<T>(VectorObject<T>) from VectorObject<T> {
 
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +69,7 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> {
 		repeatedly passed through the `iterator` function.
 	**/
 	public static function iterate<T>(len:Int, start:T, iterator:T->T):Vector<T>
-		return Sequence.iterate(len, start, iterator).toVector();
+		return Sequence.iterate(start, iterator).take(len).toVector();
 	
 	/**
 		Create a Vector representing `len` values starting at `start`
@@ -166,7 +164,10 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> {
 		efficient.
 	**/
 	public function insertEach(index:Int, values:Sequence<T>):Vector<T>
-		return toSequence().insertEach(index, values).toVector();
+		if (index < 0 || index > length)
+			return this;
+		else
+			return toSequence().insertEach(index, values).toVector();
 
 	/**
 		Returns a new Vector with the given index replaced with the given `value`. 

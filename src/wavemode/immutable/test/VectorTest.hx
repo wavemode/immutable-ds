@@ -86,13 +86,13 @@ class VectorTest extends BuddySuite {
 
 		describe("range", {
 
-			it("should create an inclusive vecuence of numbers", {
+			it("should create an inclusive vector of numbers", {
 
 				Vector.range(0, 10).equals([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).should.be(true);
 
 			});
 
-			it("should behave normally for negative vecuences", {
+			it("should behave normally for negative vectors", {
 
 				Vector.range(0, -10).equals([0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10]).should.be(true);
 
@@ -118,7 +118,7 @@ class VectorTest extends BuddySuite {
 
 		describe("step", {
 
-			it("should create an infinite vecuence of steps", {
+			it("should create an infinite vector of steps", {
 
 				Vector.step(100, 0, 2).take(100).equals([for (i in 0...100) i * 2]).should.be(true);
 
@@ -134,19 +134,19 @@ class VectorTest extends BuddySuite {
 
 		describe("join", {
 
-			it("should concat the vecuences with a separator between", {
+			it("should concat the vectors with a separator between", {
 
 				Vector.join([[1, 2], [4, 6], [7, 8]], 999).equals([1, 2, 999, 4, 6, 999, 7, 8]).should.be(true);
 
 			});
 
-			it("should handle empty vecuences within the input vector", {
+			it("should handle empty vectors within the input vector", {
 
 				Vector.join([[], [4, 5], [], [], [9]], 100).equals([100, 4, 5, 100, 100, 100, 9]).should.be(true);
 
 			});
 
-			it("should handle an empty input vecuence", {
+			it("should handle an empty input vector", {
 
 				Vector.join([], 10).equals(new Vector()).should.be(true);
 
