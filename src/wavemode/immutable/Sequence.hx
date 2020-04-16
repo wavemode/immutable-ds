@@ -17,7 +17,7 @@ import stdlib.Exception;
 
 using wavemode.immutable.Functional;
 
-@:using(wavemode.immutable.Macros.SequenceMacros)
+@:using(wavemode.immutable.util.SequenceMacros)
 abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
 

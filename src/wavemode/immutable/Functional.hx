@@ -1,8 +1,15 @@
+/**
+ *  Copyright (c) 2020-present, Chukwudi Okechukwu
+ *
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
+ *
+ */
+
 package wavemode.immutable;
 
-import stdlib.*;
+import stdlib.Exception;
 
-// TODO: Iterator to Sequence conversion
 // TODO: document and test
 
 class Functional {
