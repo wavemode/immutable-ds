@@ -8,5 +8,5 @@
 
 package wavemode.immutable;
 
-@:genericBuild(wavemode.immutable.util.StructUtils.build())
+@:genericBuild(wavemode.immutable.util.StructBuild.build())
 class Struct<T> {}

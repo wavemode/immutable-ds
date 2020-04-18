@@ -6,8 +6,6 @@
 *
 */
 
-// TODO: array index syntax
-
 package wavemode.immutable;
 
 #if macro
@@ -16,6 +14,7 @@ import haxe.macro.Expr;
 #end
 
 using wavemode.immutable.Functional;
+import wavemode.immutable.util.MapType;
 import stdlib.Exception;
 
 @:forward
@@ -27,7 +26,7 @@ abstract OrderedMap<K, V>(OrderedMapObject<K, V>) from OrderedMapObject<K, V> to
 	public function new(?object:OrderedMap<K, V>) {
 		this = new OrderedMapObject();
 		if (object != null)
-			data = object.unsafe().data;
+			this.data = object.unsafe().data;
 	}
 
 	/**
@@ -92,14 +91,9 @@ abstract OrderedMap<K, V>(OrderedMapObject<K, V>) from OrderedMapObject<K, V> to
 		throw new Exception("key $key does not exist in the map");
 	}
 
-	
-	private var data(get, set):Array<{key: K, value: V}>;
-	private function get_data() return this.data;
-	private function set_data(d) return this.data = d;
-
 }
 
-private class OrderedMapObject<K, V> {
+private class OrderedMapObject<K, V> implements MapType<K, V> {
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////// OPERATIONS ///////////////////////////////////////
@@ -588,10 +582,3 @@ private class OrderedMapObject<K, V> {
 	public var data:Array<{key: K, value: V}>;
 
 }
-
-private typedef MapType<K, V> = {
-	function has(k:K):Bool;
-	function get(k:K):Null<V>;
-	var length(get, never):Int;
-}
-

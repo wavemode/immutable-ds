@@ -6,7 +6,7 @@
 *
 */
 
-// TODO: array index syntax
+// TODO: contains for all types
 
 package wavemode.immutable;
 
@@ -16,6 +16,7 @@ import haxe.macro.Expr;
 #end
 
 using wavemode.immutable.Functional;
+import wavemode.immutable.util.MapType;
 import stdlib.Exception;
 
 @:forward
@@ -27,7 +28,7 @@ abstract Map<K, V>(MapObject<K, V>) from MapObject<K, V> to MapObject<K, V> {
 	public function new(?object:Map<K, V>) {
 		this = new MapObject();
 		if (object != null)
-			data = object.unsafe().data;
+			this.data = object.unsafe().data;
 	}
 
 	/**
@@ -92,14 +93,9 @@ abstract Map<K, V>(MapObject<K, V>) from MapObject<K, V> to MapObject<K, V> {
 		throw new Exception("key $key does not exist in the map");
 	}
 
-	
-	private var data(get, set):Array<{key: K, value: V}>;
-	private function get_data() return this.data;
-	private function set_data(d) return this.data = d;
-
 }
 
-private class MapObject<K, V> {
+private class MapObject<K, V> implements MapType<K, V> {
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////// OPERATIONS ///////////////////////////////////////
@@ -110,6 +106,7 @@ private class MapObject<K, V> {
 		exists in this Map, it will be replaced.
 	**/
 	public function set(key:K, newValue:V):Map<K, V> {
+		hash(key);
 		var i = 0, arr = data.copy();
 		var insert = true;
 		for (k => v in this) {
@@ -122,7 +119,7 @@ private class MapObject<K, V> {
 		}
 		if (insert)
 			arr.insert(0, {key: key, value: newValue});
-		return fromArray(arr);
+		return fromArray(arr, hash);
 	}
 
 	/**
@@ -142,11 +139,12 @@ private class MapObject<K, V> {
 	}
 
 	/**
-			Returns a new Map having updated the value at this key with the return value of calling `updater` with the existing value.
+		Returns a new Map having updated the value at this key with the return value of calling `updater`
+		with the existing value.
 
-			Similar to `map.set(key, updater(map.get(key)))`.
+		Similar to `map.set(key, updater(map.get(key)))`.
 
-			If `key` does not exist, this function returns the unaltered map.
+		If `key` does not exist, this function returns the unaltered map.
 	**/
 	public function update(key:K, updater:V->V):Map<K, V> {
 		var i = 0, arr = data.copy();
@@ -157,12 +155,12 @@ private class MapObject<K, V> {
 			}
 			i++;
 		}
-		return fromArray(arr);
+		return fromArray(arr, hash);
 	}
 
 	/**
-		Returns a new Map having updated the values at the keys in `keys` with the return values of calling `updater` with the existing values.
-		If any key in `keys` does not exist in the map, it is ignored.
+		Returns a new Map having updated the values at the keys in `keys` with the return values of calling
+		`updater` with the existing values. If any key in `keys` does not exist in the map, it is ignored.
 
 		Equivalent to calling `update()` for each key individually, but potentially more efficient.
 	**/
@@ -187,7 +185,7 @@ private class MapObject<K, V> {
 			}
 			i++;
 		}
-		return fromArray(arr);
+		return fromArray(arr, hash);
 	}
 
 	/**
@@ -215,7 +213,7 @@ private class MapObject<K, V> {
 			}
 		}
 
-		return result.mergeEach(merges.map(fromArray));
+		return result.mergeEach(merges.map(x -> fromArray(x, hash)));
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -226,11 +224,9 @@ private class MapObject<K, V> {
 		Returns the value associated with the provided key, or null if the Map does not contain this key.
 	**/
 	public function get(key:K):Null<V> {
-		for (k => v in this) {
-			if (key == k) {
+		for (k => v in this)
+			if (key == k)
 				return v;
-			}
-		}
 		return null;
 	}
 	
@@ -272,7 +268,7 @@ private class MapObject<K, V> {
 		Returns a new Map with only the entries for which the predicate function returns true.
 	**/
 		public function filter(predicate:(K, V) -> Bool):Map<K, V>
-			return fromArray(data.filter(pair -> predicate(pair.key, pair.value)));
+			return fromArray(data.filter(pair -> predicate(pair.key, pair.value)), hash);
 
 	/**
 		Returns a new Map which excludes this value.
@@ -286,7 +282,7 @@ private class MapObject<K, V> {
 			}
 			i++;
 		}
-		return fromArray(arr);
+		return fromArray(arr, hash);
 	}
 
 	/**
@@ -314,7 +310,7 @@ private class MapObject<K, V> {
 			}
 			i++;
 		}
-		return fromArray(arr);
+		return fromArray(arr, hash);
 	}
 
 	/**
@@ -372,7 +368,7 @@ private class MapObject<K, V> {
 		This is equivalent to calling `merge()` for each map individually, but potentially more
 		efficient.
 	**/
-	public function mergeEach(others:Iterable<Map<K, V>>, ?mergeFunction:(V, V) -> V):Map<K, V> { // TODO: implement
+	public function mergeEach(others:Iterable<Map<K, V>>, ?mergeFunction:(V, V) -> V):Map<K, V> {
 		var result = this;
 		for (other in others)
 			result = result.merge(other, mergeFunction);
@@ -389,7 +385,7 @@ private class MapObject<K, V> {
 		Returns a new Map with values passed through a mapper function.
 	**/
 	public function map<M>(mapper:(K, V) -> M):Map<K, M>
-		return fromArray(data.map(pair -> {key: pair.key, value: mapper(pair.key, pair.value)}));
+		return fromArray(data.map(pair -> {key: pair.key, value: mapper(pair.key, pair.value)}), hash);
 
 	/**
 		Returns a new Map with keys passed through a mapper function.
@@ -578,21 +574,65 @@ private class MapObject<K, V> {
 	/////////////////////////////////////// INTERNALS ///////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
 
-	public function new() data = [];
-	public static function fromArray<K, V>(arr:Array<{key: K, value: V}>):Map<K, V> {
+	public function new() {
+		data = [];
+		hash = initHash;
+	}
+	public static function fromArray<K, V>(arr:Array<{key: K, value: V}>, ?fn:K->Int):Map<K, V> {
 		var map = new MapObject();
 		map.data = arr.copy();
+		if (fn != null)
+			map.hash = fn;
 		map.data.reverse();
 		return map;
 	}
 
 	public var data:Array<{key: K, value: V}>;
 
-}
+	private var hash:K->Int;
+	
+	private function initHash(val:Dynamic):Int {
+		if (Std.is(val, String))
+			return (hash = cast stringHash)(val);
+		else if (Std.is(val, Int))
+			return (hash = cast intHash)(val);
+		else
+			return (hash = dynamicHash)(val);
+	}
 
-private typedef MapType<K, V> = {
-	function has(k:K):Bool;
-	function get(k:K):Null<V>;
-	var length(get, never):Int;
-}
+	private static function dynamicHash(val:Dynamic):Int {
+		try {
+			return val.hashCode();
+		} catch (err:Any) {
+			return stringHash(Std.string(val));
+		}
+	}
 
+	private static function stringHash(str:String):Int {
+		/*
+			credit: Dark Sky
+			https://github.com/darkskyapp/string-hash
+		*/
+		var hash = 5381,
+			i    = str.length;
+
+		while(i > 0)
+			@:nullSafety(Off) hash = (hash * 33) ^ str.charCodeAt(--i);
+
+		return hash;
+	}
+
+	private static function intHash(num:Int):Int {
+		/*
+			credit: Thomas Wang
+			http://burtleburtle.net/bob/hash/integer.html
+		*/
+		num = (num ^ 61) ^ (num >> 16);
+		num = num + (num << 3);
+		num = num ^ (num >> 4);
+		num = num * 0x27d4eb2d;
+		num = num ^ (num >> 15);
+		return num;
+	}
+
+}

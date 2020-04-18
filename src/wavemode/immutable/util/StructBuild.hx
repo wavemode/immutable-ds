@@ -59,7 +59,7 @@ typedef FieldInfo = {name:String,type:Type};
     isExtern: false}
 **/
 
-class StructUtils {
+class StructBuild {
     static function build() {
         var typeParam:Type = getTypeParam();
         var followedType:Type = TypeTools.follow(typeParam);
