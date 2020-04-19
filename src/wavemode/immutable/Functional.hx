@@ -39,24 +39,6 @@ class Functional {
 	**/
 	public static inline function unsafe<T>(value:Null<T>):T
 		return @:nullSafety(Off) (value:T);
-	
-
-	/**
-		Returns true if the Null<T> object is null.
-	**/
-	public static inline function empty<T>(value:Null<T>):Bool
-		return value == null;
-
-	/**
-		Returns true if two Null<T> objects are equivalent (both empty, or values equal)
-	**/
-	public static inline function equals<T>(value1:Null<T>, value2:Null<T>):Bool
-		return if (empty(value1))
-			empty(value2);
-		else if (empty(value2))
-			empty(value1);
-		else
-			value1 == value2;
 
 	/**
 		Returns true if the Null<T> object contains the given value.

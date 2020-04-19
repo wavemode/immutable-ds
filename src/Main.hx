@@ -5,11 +5,12 @@ import wavemode.immutable.Map;
 class Main {
     static function main() {
         var map = new Map();
-        for (i in 0...1999)
-            map = map.set(i, i);
-        // @:privateAccess {
-        //     var seq = Sequence.fromIterable(map.data);
-        //     Sys.println(seq);
-        // }
+        map = map.setEach(["hello", "cool", "goodbye", "hello", "mountain"], ["world", "beans", "world", "cat"]);
+        map = map.updateEach(["hello", "cool", "elephant"], x -> x + x);
+        map = map.replaceEach(["catcat", "beansbeans"], ["dogdogdog", "refried", "carrot"]);
+        map = map.deleteEach(["hello", "goodbye"]);
+
+        var map = Map.make({a: 5, b: 6, c: 7}).merge(Map.make({b: 10, c: 11, d: 12}), (a, b) -> a + b);
+        Sys.println(map.reduce((a,b) -> a + b));
     }
 }

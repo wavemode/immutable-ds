@@ -7,11 +7,6 @@ import haxe.ds.Vector;
 
 /**
     A hash array mapped trie.
-
-    Operations beginning with "copy" return a new modified trie without
-    mutating the original. (This does not require copying the entire
-    structure; the new trie will share most of its internal structure
-    with the old.) The non-copy variants mutate the trie in place.
 **/
 @:nullSafety(Off)
 class Trie<K,V> {
@@ -250,12 +245,16 @@ class Trie<K,V> {
     }
 
     public function copyUpdateEach(hashes:Array<Int>, keys:Array<K>, fn:V->V, depth:Int = 0):Trie<K,V> {
-        var clone = copy();
+        var clone = this, copied = false;
         var minLen = if (hashes.length < keys.length) hashes.length else keys.length;
         for (i in 0...minLen) {
             var h = hashes[i], k = keys[i];
             if (clone.hash == h) {
                 if (clone.pair.key == k) {
+                    if (!copied) {
+                        clone = copy();
+                        copied = true;
+                    }
                     clone.pair = new Pair(clone.pair.key, fn(clone.pair.value));
                     continue;
                 }
@@ -263,6 +262,10 @@ class Trie<K,V> {
                     for (i in 0...clone.chain.length) {
                         var pair = clone.chain[i];
                         if (pair.key == k) {
+                            if (!copied) {
+                                clone = copy();
+                                copied = true;
+                            }
                             clone.chain[i] = new Pair(pair.key, fn(pair.value));
                             continue;
                         }
@@ -272,6 +275,10 @@ class Trie<K,V> {
             if (clone.array != null) {
                 var index = indexOf(h, depth);
                 if (clone.array[index] != null && (depth > 0 || clone.array[index].retrieve(h, k) != null)) {
+                    if (!copied) {
+                        clone = copy();
+                        copied = true;
+                    }
                     clone.array[index] = clone.array[index].copyUpdate(h, k, fn, depth + 1);
                     continue;
                 }
@@ -280,6 +287,86 @@ class Trie<K,V> {
 
         return clone;
 
+    }
+
+    public function copyReplace(oldVal:V, newVal:V):Trie<K,V> {
+        var result = this, copied = false;
+
+        if (result.pair != null) {
+            if (result.pair.value == oldVal) {
+                result = result.copy();
+                copied = true;
+                result.pair = new Pair(result.pair.key, newVal);
+            }
+        }
+
+        if (result.chain != null) {
+            for (i in 0...result.chain.length) {
+                if (result.chain[i].value == oldVal) {
+                    if (!copied) {
+                        result = result.copy();
+                        copied = true;
+                    }
+                    result.chain[i] = new Pair(result.chain[i].key, newVal);
+                }
+            }
+        }
+
+        if (result.array != null) {
+            for (i in 0...result.array.length) {
+                if (result.array[i] != null && result.array[i].contains(oldVal)) {
+                    if (!copied) {
+                        result = result.copy();
+                        copied = true;
+                    }
+                    result.array[i] = result.array[i].copyReplace(oldVal, newVal);
+                }
+            }
+        }
+
+        return result;
+    }
+
+
+    public function copyReplaceEach(oldVals:Array<V>, newVals:Array<V>):Trie<K,V> {
+        var result = this, copied = false;
+        var minLen = if (oldVals.length < newVals.length) oldVals.length else newVals.length;
+        for (i in 0...minLen) {
+            var oldVal = oldVals[i], newVal = newVals[i];
+            if (result.pair != null) {
+                if (result.pair.value == oldVal) {
+                    result = result.copy();
+                    copied = true;
+                    result.pair = new Pair(result.pair.key, newVal);
+                }
+            }
+
+            if (result.chain != null) {
+                for (i in 0...result.chain.length) {
+                    if (result.chain[i].value == oldVal) {
+                        if (!copied) {
+                            result = result.copy();
+                            copied = true;
+                        }
+                        result.chain[i] = new Pair(result.chain[i].key, newVal);
+                    }
+                }
+            }
+
+            if (result.array != null) {
+                for (i in 0...result.array.length) {
+                    if (result.array[i] != null && result.array[i].contains(oldVal)) {
+                        if (!copied) {
+                            result = result.copy();
+                            copied = true;
+                        }
+                        result.array[i] = result.array[i].copyReplace(oldVal, newVal);
+                    }
+                }
+            }
+        }
+
+        return result;
     }
 
 
@@ -302,22 +389,43 @@ class Trie<K,V> {
         return null;
     }
 
-    public function contains(h:Int, k:K, depth = 0):Bool {
-        if (hash == h)
-            if (pair.key == k)
+    public function contains(v:V):Bool {
+        if (pair != null)
+            if (pair.value == v)
                 return true;
 
         if (chain != null)
             for (pair in chain)
-                if (pair.key == k)
+                if (pair.value == v)
                     return true;
 
         if (array != null) {
-            var index = indexOf(h, depth);
-            if (array[index] != null)
-                return array[index].contains(h, k, depth + 1);
+            for (index in 0...array.length)
+                if (array[index] != null && array[index].contains(v))
+                    return true;
         }
 
+        return false;
+    }
+
+    public function has(h:Int, k:K, depth = 0):Bool {
+        if (hash == h) {
+        
+            if (pair.key == k)
+                return true;
+
+            if (chain != null)
+                for (pair in chain)
+                    if (pair.key == k)
+                        return true;
+        
+        }
+
+        if (array != null) {
+            var index = indexOf(h, depth); 
+            if (array[index] != null)
+                return array[index].has(h, k, depth + 1);
+        }
         return false;
     }
 
@@ -392,7 +500,7 @@ class Trie<K,V> {
                         var clone = copy();
                         clone.pair = chain[chain.length - 1];
                         --clone.length;
-                        if (chain.length == 1)
+                        if (clone.chain.length == 1)
                             clone.chain = null;
                         else
                             clone.chain.remove(pair);
@@ -404,7 +512,7 @@ class Trie<K,V> {
                 for (i in 0...chain.length) {
                     if (chain[i].key == k) {
                         var clone = copy();
-                        if (chain.length == 1)
+                        if (clone.chain.length == 1)
                             clone.chain = null;
                         else
                             clone.chain.remove(chain[i]);
@@ -415,6 +523,123 @@ class Trie<K,V> {
             }
         }
         return this;
+    }
+
+    public function copyDeleteEach(hashes:Array<Int>, keys:Array<K>, depth = 0):Trie<K,V> {
+        var clone = this, copied = false;
+        var minLen = if (hashes.length < keys.length) hashes.length else keys.length;
+        for (i in 0...minLen) {
+            var h = hashes[i], k = keys[i];
+            if (depth < 6) {
+                if (hash == h) {
+                    if (pair.key == k) {
+                        return new Trie();
+                    }
+                }
+                if (array != null) {
+                    var index = indexOf(h, depth);
+                    if (array[index] != null) {
+                        if (!copied) {
+                            clone = copy();
+                            copied = true;
+                        }
+                        clone.array[index] = array[index].copyDelete(h, k, depth + 1);
+                        continue;
+                    }
+                }
+            } else {
+                if (clone.hash == h) {
+                    if (clone.pair.key == k) {
+                        if (clone.chain == null) {
+                            return new Trie();
+                        } else {
+                            if (!copied) {
+                                clone = copy();
+                                copied = true;
+                            }
+                            clone.pair = chain[chain.length - 1];
+                            --clone.length;
+                            if (clone.chain.length == 1)
+                                clone.chain = null;
+                            else
+                                clone.chain.remove(pair);
+                            continue;
+                        }
+                    }
+                }
+                if (clone.chain != null) {
+                    for (i in 0...clone.chain.length) {
+                        if (clone.chain[i].key == k) {
+                            if (!copied) {
+                                clone = copy();
+                                copied = true;
+                            }
+                            if (clone.chain.length == 1)
+                                clone.chain = null;
+                            else
+                                clone.chain.remove(chain[i]);
+                            --clone.length;
+                        }
+                    }
+                }
+            }
+        }
+        return clone;
+    }
+
+    public function copyFilter(predicate:(K,V)->Bool, depth = 0):Trie<K,V> {
+        var clone = this, copied = false;
+        if (depth < 6) {
+            if (clone.pair != null && !predicate(clone.pair.key, clone.pair.value))
+                return new Trie();
+            if (clone.array != null) {
+                for (i in 0...clone.array.length) {
+                    if (clone.array[i] != null) {
+                        if (!copied) {
+                            clone = copy();
+                            copied = true;
+                        }
+                        clone.array[i] = clone.array[i].copyFilter(predicate, depth + 1);
+                    }
+                }
+            }
+        } else {
+            if (clone.pair != null) {
+                if (!predicate(clone.pair.key, clone.pair.value)) {
+                    if (clone.chain == null) {
+                        return new Trie();
+                    } else {
+                        if (!copied) {
+                            clone = copy();
+                            copied = true;
+                        }
+                        clone.pair = chain[chain.length - 1];
+                        --clone.length;
+                        if (clone.chain.length == 1)
+                            clone.chain = null;
+                        else
+                            clone.chain.remove(pair);
+                        return clone;
+                    }
+                }
+            }
+            if (clone.chain != null) {
+                for (i in 0...clone.chain.length) {
+                    if (!predicate(clone.chain[i].key, clone.chain[i].value)) {
+                        if (!copied) {
+                            clone = copy();
+                            copied = true;
+                        }
+                        if (clone.chain.length == 1)
+                            clone.chain = null;
+                        else
+                            clone.chain.remove(chain[i]);
+                        --clone.length;
+                    }
+                }
+            }
+        }
+        return clone;
     }
 
     public function count():Int {

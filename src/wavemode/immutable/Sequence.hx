@@ -971,19 +971,19 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
 
         function getSequence(nth:Int):Null<Sequence<T>> {
 
-            if (getNth(nth, 0).empty())
+            if (getNth(nth, 0) == null)
                 return null;
 
             var index = 0;
             var nextVal:Null<T> = null;
 
             function gv():Void
-                if (nextVal.empty())
+                if (nextVal == null)
                     nextVal = getNth(nth, index++);
 
             function hn():Bool {
                 gv();
-                return !nextVal.empty();
+                return nextVal != null;
             }
 
             function n():T {
@@ -1234,6 +1234,12 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     public inline function indexOf(value:T, ?start:Int):Int
         return find(value, start);
+
+    /**
+        Returns true if the given value in in this Sequence.
+    **/
+    public inline function contains(value:T):Bool
+        return find(value) != -1;
 
     /**
         Returns the first index at which the given `predicate` returns true, or -1 if

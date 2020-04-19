@@ -189,7 +189,7 @@ class MapTest extends BuddySuite {
 			});
 		});
 
-		describe("get", {
+		describe("get / [index]", {
 			var one;
 
 			beforeEach({
@@ -198,29 +198,12 @@ class MapTest extends BuddySuite {
 
 			it("should retrieve existing keys", {
 				one.get("a").should.be(10);
+				one["a"].should.be(10);
 			});
 
 			it("should return null for nonexisting keys", {
 				one.get("d").should.be(null);
-			});
-		});
-		
-
-		describe("getValue [index]", {
-			var one;
-
-			beforeEach({
-				one = Map.make({a: 10, b: 20, c: 30});
-			});
-
-			it("should retrieve existing keys", {
-				one.getValue("a").should.be(10);
-				one["a"].should.be(10);
-			});
-
-			it("should throw an exception for nonexisting keys", {
-				(() -> one.getValue("d")).should.throwAnything();
-				(() -> one["d"]).should.throwAnything();
+				one["d"].should.be(null);
 			});
 		});
 		

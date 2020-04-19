@@ -93,7 +93,7 @@ abstract OrderedMap<K, V>(OrderedMapObject<K, V>) from OrderedMapObject<K, V> to
 
 }
 
-private class OrderedMapObject<K, V> /* implements MapType<K, V> */ {
+private class OrderedMapObject<K, V> implements MapType<K, V>  {
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////// OPERATIONS ///////////////////////////////////////
