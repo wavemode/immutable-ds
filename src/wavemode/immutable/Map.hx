@@ -87,8 +87,9 @@ private class MapObject<K, V> implements MapType<K, V> {
 		exists in this Map, it will be replaced.
 	**/
 	public function set(key:K, newValue:V):Map<K, V> {
+		var h = hash(key);
 		var map = new MapObject(hash);
-		map.data = data.copyInsert(hash(key), new Pair(key, newValue));
+		map.data = data.copyInsert(h, new Pair(key, newValue));
 		return map;
 	}
 
@@ -100,6 +101,10 @@ private class MapObject<K, V> implements MapType<K, V> {
 		efficient.
 	**/
 	public function setEach(keys:Sequence<K>, values:Sequence<V>):Map<K, V> {
+		if (keys.empty())
+			return this;
+		else
+			initHash(keys[0]);
 		var map = new MapObject(hash);
 		map.data = data.copyInsertEach(keys.map(hash).toArray(), values.mapIndex((i, v) -> new Pair(keys[i], values[i])).toArray());
 		return map;
@@ -114,8 +119,9 @@ private class MapObject<K, V> implements MapType<K, V> {
 		If `key` does not exist, this function returns the unaltered map.
 	**/
 	public function update(key:K, updater:V->V):Map<K, V> {
+		var h = hash(key);
 		var map = new MapObject(hash);
-		map.data = data.copyUpdate(hash(key), key, updater);
+		map.data = data.copyUpdate(h, key, updater);
 		return map;
 	}
 
@@ -126,6 +132,10 @@ private class MapObject<K, V> implements MapType<K, V> {
 		Equivalent to calling `update()` for each key individually, but potentially more efficient.
 	**/
 	public function updateEach(keys:Sequence<K>, updater:V->V):Map<K, V> {
+		if (keys.empty())
+			return this;
+		else
+			initHash(keys[0]);
 		var map = new MapObject(hash);
 		map.data = data.copyUpdateEach([for (k in keys) hash(k)], keys.toArray(), updater);
 		return map;

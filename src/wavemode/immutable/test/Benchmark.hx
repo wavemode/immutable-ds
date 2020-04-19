@@ -15,12 +15,12 @@ class Benchmark {
         // bench("haxe.ds.Map.set",
         //     var map = new haxe.ds.Map(),
         //     map.set(__i__, __i__));
-        // bench("Map.set", 
-        //     var map = new Map(),
-        //     map = map.set(__i__, __i__));
-        bench("Map.get",
-            var map = new Map().setEach(Sequence.step().take(1000000), Sequence.step().take(1000000)),
-            var val = map.get(__i__));
+        bench("Map.set", 
+            var map = new Map(),
+            map = map.set(__i__, __i__));
+        // bench("Map.get",
+        //     var map = new Map().setEach(Sequence.step().take(1000000), Sequence.step().take(1000000)),
+        //     var val = map.get(__i__));
         // bench("Vector.push",
         //     var vec = new Vector(),
         //     vec = vec.push(10));
