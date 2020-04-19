@@ -17,30 +17,26 @@ import haxe.macro.Expr;
 
 using wavemode.immutable.Functional;
 import wavemode.immutable.util.MapType;
+import wavemode.immutable.util.Trie;
+import wavemode.immutable.util.Pair;
 import stdlib.Exception;
 
 @:forward
 abstract Map<K, V>(MapObject<K, V>) from MapObject<K, V> to MapObject<K, V> {
 
 	/**
-		Create a new empty Map, or a clone of the given `object`.
+		Create a new empty Map.
 	**/
-	public function new(?object:Map<K, V>) {
+	public function new()
 		this = new MapObject();
-		if (object != null)
-			this.data = object.unsafe().data;
-	}
 
 	/**
-		Create a new `Map` from a `haxe.ds.Map`
+		Create a new `Map` from a `KeyValueIterable`
 	**/
-	@:from public static function fromMap<K, V>(map:haxe.ds.Map<K, V>):Map<K, V> {
-		var result = [];
-		for (k => v in map) {
-			result.push({key: k, value: v});
-		}
+	@:from public static function fromMap<K, V>(map:KeyValueIterable<K, V>):Map<K, V> {
 		var map = new Map();
-		map.data = result;
+		for (k => v in map)
+			map = map.set(k, v);
 		return map;
 	}
 
@@ -79,46 +75,21 @@ abstract Map<K, V>(MapObject<K, V>) from MapObject<K, V> to MapObject<K, V> {
 		return expr;
 	}
 
-	/**
-		Unsafe variant of `get()`. Returns the value associated with the provided key, or throws an Exception
-		if the Map does not contain this key.
-	**/
-	@:arrayAccess
-	public function getValue(key: K):V {
-		for (k => v in this) {
-			if (key == k) {
-				return v;
-			}
-		}
-		throw new Exception("key $key does not exist in the map");
-	}
+	private var data(get, never):Trie<K,V>;
+	private function get_data() return this.data;
 
 }
 
 private class MapObject<K, V> implements MapType<K, V> {
-
-	//////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////// OPERATIONS ///////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 		Returns a new Map containing the new (key, value) pair. If an equivalent key already
 		exists in this Map, it will be replaced.
 	**/
 	public function set(key:K, newValue:V):Map<K, V> {
-		var i = 0, arr = data.copy();
-		var insert = true;
-		for (k => v in this) {
-			if (key == k) {
-				arr[i] = {key: k, value: newValue};
-				insert = false;
-				break;
-			}
-			i++;
-		}
-		if (insert)
-			arr.insert(0, {key: key, value: newValue});
-		return fromArray(arr, hash);
+		var map = new MapObject(hash);
+		map.data = data.copyInsert(hash(key), new Pair(key, newValue));
+		return map;
 	}
 
 	/**
@@ -129,11 +100,8 @@ private class MapObject<K, V> implements MapType<K, V> {
 		efficient.
 	**/
 	public function setEach(keys:Sequence<K>, values:Sequence<V>):Map<K, V> {
-		var index:Int = 0, map = this;
-		while (keys.has(index) && values.has(index)) {
-			map = map.set(keys.getValue(index), values.getValue(index));
-			++index;
-		}
+		var map = new MapObject(hash);
+		map.data = data.copyInsertEach(keys.map(hash).toArray(), values.mapIndex((i, v) -> new Pair(keys[i], values[i])).toArray());
 		return map;
 	}
 
@@ -146,15 +114,9 @@ private class MapObject<K, V> implements MapType<K, V> {
 		If `key` does not exist, this function returns the unaltered map.
 	**/
 	public function update(key:K, updater:V->V):Map<K, V> {
-		var i = 0, arr = data.copy();
-		for (k => v in this) {
-			if (key == k) {
-				arr[i] = {key: k, value: updater(v)};
-				break;
-			}
-			i++;
-		}
-		return fromArray(arr, hash);
+		var map = new MapObject(hash);
+		map.data = data.copyUpdate(hash(key), key, updater);
+		return map;
 	}
 
 	/**
@@ -163,11 +125,9 @@ private class MapObject<K, V> implements MapType<K, V> {
 
 		Equivalent to calling `update()` for each key individually, but potentially more efficient.
 	**/
-	public function updateEach(keys:Iterable<K>, updater:V->V):Map<K, V> {
-		var map = this;
-		for (key in keys) {
-			map = map.update(key, updater);
-		}
+	public function updateEach(keys:Sequence<K>, updater:V->V):Map<K, V> {
+		var map = new MapObject(hash);
+		map.data = data.copyUpdateEach([for (k in keys) hash(k)], keys.toArray(), updater);
 		return map;
 	}
 
@@ -176,16 +136,8 @@ private class MapObject<K, V> implements MapType<K, V> {
 
 		If the value does not exist, this function returns the unaltered set.
 	**/
-	public function replace(value:V, newVal:V):Map<K, V> {
-		var i = 0, arr = data.copy();
-		for (k => v in this) {
-			if (value == v) {
-				arr[i] = {key: k, value: newVal};
-			}
-			i++;
-		}
-		return fromArray(arr, hash);
-	}
+	public function replace(value:V, newVal:V):Map<K, V>
+		throw new Exception("not implemented");
 
 	/**
 		Returns a new Map having the given values replaced with the values in `newVals`.
@@ -196,93 +148,50 @@ private class MapObject<K, V> implements MapType<K, V> {
 		potentially more efficient, and previous replacements do not affect subsequent
 		ones.
 	**/
-	public function replaceEach(values:Iterable<V>, newVals:Iterable<V>):Map<K, V> {
-		var valIter = values.iterator(),
-			newIter = newVals.iterator(),
-			result = this;
-
-		var merges = [];
-
-		while (valIter.hasNext() && newIter.hasNext()) {
-			var oldVal = valIter.next(), newVal = newIter.next();
-
-			for (key => val in result) {
-				if (val == oldVal)
-					merges.push([{key: key, value: newVal}]);
-			}
-		}
-
-		return result.mergeEach(merges.map(x -> fromArray(x, hash)));
-	}
-
-	//////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////// SELECTIONS ///////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////
+	public function replaceEach(values:Iterable<V>, newVals:Iterable<V>):Map<K, V>
+		throw new Exception("not implemented");
 
 	/**
 		Returns the value associated with the provided key, or null if the Map does not contain this key.
 	**/
-	public function get(key:K):Null<V> {
-		for (k => v in this)
-			if (key == k)
-				return v;
-		return null;
-	}
+	public function get(key:K):Null<V>
+		return data.retrieve(hash(key), key);
 	
 	/**
 		True if a key exists within this Map.
 	**/
-	public function has(key:K):Bool {
-		for (k => v in this)
-			if (key == k)
-				return true;
-		return false;
-	}
+	public function has(key:K):Bool
+		throw new Exception("not implemented");
 
 	/**
 		True if the Map is empty.
 	**/
 	public function empty():Bool
-		return length == 0;
+		throw new Exception("not implemented");
 
 	/**
 		Returns the key of a given value in the map, or null if the value does not exist.
 	**/
-	public function find(value:V):Null<K> {
-		for (k => v in this)
-			if (value == v)
-				return k;
-		return null;
-	}
+	public function find(value:V):Null<K>
+		throw new Exception("not implemented");
 
 	/**
 		Returns the first key at which `predicate` returns true, or null if no match is found.
 	**/
-	public function findWhere(predicate:V->Bool):Null<K> {
-		for (k => v in this) if (predicate(v)) return k;
-		return null;
-	}
+	public function findWhere(predicate:V->Bool):Null<K>
+		throw new Exception("not implemented");
 
 	/**
 		Returns a new Map with only the entries for which the predicate function returns true.
 	**/
 		public function filter(predicate:(K, V) -> Bool):Map<K, V>
-			return fromArray(data.filter(pair -> predicate(pair.key, pair.value)), hash);
+			throw new Exception("not implemented");
 
 	/**
 		Returns a new Map which excludes this value.
 	**/
-	public function remove(value:V):Map<K, V> {
-		var i = 0, arr = data;
-		for (v in this) {
-			if (value == v) {
-				arr = arr.slice(0, i).concat(arr.slice(i + 1));
-				--i;
-			}
-			i++;
-		}
-		return fromArray(arr, hash);
-	}
+	public function remove(value:V):Map<K, V>
+		throw new Exception("not implemented");
 
 	/**
 		Returns a new Map which excludes the provided values.
@@ -290,27 +199,14 @@ private class MapObject<K, V> implements MapType<K, V> {
 		This is equivalent to calling `remove()` for each value individually, but potentially more
 		efficient.
 	**/
-	public inline function removeEach(values:Iterable<V>):Map<K, V> {
-		var map = this;
-		for (value in values)
-			map = map.remove(value);
-		return map;
-	}
+	public inline function removeEach(values:Iterable<V>):Map<K, V>
+		throw new Exception("not implemented");
 
 	/**
 		Returns a new Map which excludes this key.
 	**/
-	public function delete(key:K):Map<K, V> {
-		var i = 0, arr = data;
-		for (k => v in this) {
-			if (key == k) {
-				arr = arr.slice(0, i).concat(arr.slice(i + 1));
-				break;
-			}
-			i++;
-		}
-		return fromArray(arr, hash);
-	}
+	public function delete(key:K):Map<K, V>
+		throw new Exception("not implemented");
 
 	/**
 		Returns a new Map which excludes the provided keys.
@@ -318,23 +214,14 @@ private class MapObject<K, V> implements MapType<K, V> {
 		This is equivalent to calling `delete()` for each key individually, but potentially more
 		efficient.
 	**/
-	public function deleteEach(keys:Iterable<K>):Map<K, V> {
-		var map = this;
-		for (key in keys) {
-			map = map.delete(key);
-		}
-		return map;
-	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////// TRANSFORMATIONS ////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
+	public function deleteEach(keys:Iterable<K>):Map<K, V>
+		throw new Exception("not implemented");
 
 	/**
 		Returns a new Map containing no keys or values.
 	**/
 	public function clear():Map<K, V>
-		return new Map();
+		throw new Exception("not implemented");
 
 
 	/**
@@ -344,17 +231,8 @@ private class MapObject<K, V> implements MapType<K, V> {
 		If `mergeFunction` is provided, it is used to resolve key conflicts. If not, keys from
 		`other` override keys from this Map.
 	**/
-	public function merge(other:Map<K, V>, ?mergeFunction:(V, V) -> V):Map<K, V> {
-		var result = this;
-		for (k => v1 in other) {
-			var v2 = get(k);
-			if (v2 == null || mergeFunction == null)
-				result = result.set(k, v1);
-			else
-				result = result.set(k, mergeFunction(v2.sure(), v1));
-		}
-		return result;
-	}
+	public function merge(other:Map<K, V>, ?mergeFunction:(V, V) -> V):Map<K, V>
+		throw new Exception("not implemented");
 
 	/**
 		Returns a new Map resulting from merging each Map in `others` into this Map. In other words,
@@ -367,35 +245,21 @@ private class MapObject<K, V> implements MapType<K, V> {
 		This is equivalent to calling `merge()` for each map individually, but potentially more
 		efficient.
 	**/
-	public function mergeEach(others:Iterable<Map<K, V>>, ?mergeFunction:(V, V) -> V):Map<K, V> {
-		var result = this;
-		for (other in others)
-			result = result.merge(other, mergeFunction);
-		return result;
-	}
-
-
-	//////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////// MAPPINGS ////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////
-
+	public function mergeEach(others:Iterable<Map<K, V>>, ?mergeFunction:(V, V) -> V):Map<K, V>
+		throw new Exception("not implemented");
 
 	/**
 		Returns a new Map with values passed through a mapper function.
 	**/
 	public function map<M>(mapper:(K, V) -> M):Map<K, M>
-		return fromArray(data.map(pair -> {key: pair.key, value: mapper(pair.key, pair.value)}), hash);
+		throw new Exception("not implemented");
 
 	/**
 		Returns a new Map with keys passed through a mapper function.
 	**/
 	public function mapKeys<M>(mapper:(K, V) -> M):Map<M, V>
-		return fromArray(data.map(pair -> {key: mapper(pair.key, pair.value), value: pair.value}));
+		throw new Exception("not implemented");
 
-
-	//////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////// REDUCTIONS ///////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 		Returns the accumulation of the values in this Map according to `foldFn`, beginning
@@ -404,7 +268,7 @@ private class MapObject<K, V> implements MapType<K, V> {
 		For example, `[1, 2, 3].fold((a, b) -> a - b, 0)` evaluates `0 - 1 - 2 - 3 = -6`
 	**/
 	public function fold<R>(foldFn:(R, V)->R, initialValue:R):R
-		return Sequence.fromIterable(this).fold(foldFn, initialValue);
+		throw new Exception("not implemented");
 
 	/**
 		A simpler form of `fold()`
@@ -416,181 +280,118 @@ private class MapObject<K, V> implements MapType<K, V> {
 		Throws an Exception if the Map is empty.
 	**/
 	public function reduce(reducer:(V, V)->V):V
-		if (empty())
-			throw new Exception("attempt to reduce empty Map");
-		else
-			return Sequence.fromIterable(this).reduce(reducer);
+		throw new Exception("not implemented");
 
 	/**
 		Number of keys that are in the map. Read-only property.
 	**/
-	public var length(get, never):Int;
-	function get_length()
-		return data.length;
+	public var length(default, null):Int;
 
 	/**
 		Returns true if the given `predicate` is true for every value in the Map.
 	**/
 	public function every(predicate:V->Bool):Bool
-		return Sequence.fromIterable(this).every(predicate);
+		throw new Exception("not implemented");
 
 	/**
 		Returns true if the given `predicate` is true for any value in the Map.
 	**/
 	public function some(predicate:V->Bool):Bool
-		return Sequence.fromIterable(this).some(predicate);
+		throw new Exception("not implemented");
 
 	/**
 		True if this and the `other` Map have identical keys and values.
 	**/
-	@:generic
-	public function equals<T:MapType<K, V>>(other:T):Bool {
-		if (length != other.length)
-			return false;
-		for (key => value in this)
-			if (!other.get(key).is(value))
-				return false;
-		return true;
-	}
-
+	public function equals<T:MapType<K, V>>(other:T):Bool
+		throw new Exception("not implemented");
 	/**
 		The `sideEffect` is executed for every entry in the Map.
 	**/
 	public function forEach(sideEffect:(K, V) -> Void):Void
-		for (k => v in this)
-			sideEffect(k, v);
-
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////// CONVERSIONS //////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-
+		throw new Exception("not implemented");
 
 	/**
 		Iterator over each value in the Map.
 	**/
-	public function iterator():Iterator<V> {
-		var i = 0;
-		return {
-			hasNext: () -> i < data.length,
-			next: () -> data[i++].value
-		};
-	}
+	public function iterator():Iterator<V>
+		throw new Exception("not implemented");
 
 	/**
 		Iterator over each key-value pair in the Map.
 	**/
-	public function keyValueIterator():KeyValueIterator<K, V> {
-		var i = 0;
-		return {
-			hasNext: () -> i < data.length,
-			next: () -> {
-				var result = {key: data[i].key, value: data[i].value};
-				++i;
-				result;
-			}
-		};
-	}
+	public function keyValueIterator():KeyValueIterator<K, V>
+		throw new Exception("not implemented");
 
 	/**
 		An iterator of this Map's keys.
 	**/
-	public function keys():Iterator<K> { // TODO: implement
-		var i = 0;
-		return {
-			hasNext: () -> i < data.length,
-			next: () -> data[i++].key
-		};
-	}
+	public function keys():Iterator<K>
+		throw new Exception("not implemented");
 
 	/**
 		An iterator of this Map's keys. Equivalent to `iterator()`.
 	**/
 	public inline function values():Iterator<V>
-		return iterator();
+		throw new Exception("not implemented");
 
 	/**
 		An iterator of this Map's entries as key-value pairs.
 	**/
 	public inline function entries():Iterator<{key: K, value: V}>
-		return data.iterator();
+		throw new Exception("not implemented");
 
 	/**
 		Shallowly converts this Map to an Array.
 	**/
 	public inline function toArray():Array<V>
-		return [for (v in values()) v];
+		throw new Exception("not implemented");
 
 	/**
 		Converts this Map to a Map.
 	**/
 	public inline function toOrderedMap():OrderedMap<K, V>
-		return new OrderedMap().setEach(keys(), values());
+		throw new Exception("not implemented");
 
 	/**
 		Converts this Map to a Vector, discarding keys.
 	**/
 	public inline function toVector():Vector<V>
-		return Vector.fromSequence(values());
+		throw new Exception("not implemented");
 
 	/**
 		Converts this Map to a Set, discarding keys.
 	**/
 	public inline function toSet():Set<V>
-		return new Set().addEach(values());
+		throw new Exception("not implemented");
 
 	/**
 		Converts this Map to an OrderedSet, discarding keys.
 	**/
 	public inline function toOrderedSet():OrderedSet<V>
-		return new OrderedSet().addEach(values());
+		throw new Exception("not implemented");
 
 	/**
 		Converts this Map to a Sequence, discarding keys.
 	**/
 	public inline function toSequence():Sequence<V>
-		return Sequence.fromIterable(this);
+		throw new Exception("not implemented");
 
 	/**
 		Convers this Map to its String representation.
 	**/
-	public function toString():String {
-		var result = "Map {";
-		var cut = false;
+	public function toString():String
+		throw new Exception("not implemented");
 
-		for (k => v in this) {
-			cut = true;
-			result += ' $k: $v,';
-		}
-
-		if (cut)
-			result = result.substr(0, result.length - 1);
-		return result + " }";
-	}
-
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////// INTERNALS ///////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-
-	public function new(?hashFn) {
-		data = [];
+	public function new(?hashFn:K->Int) {
+		data = new Trie();
+		length = 0;
 		if (hashFn != null)
 			hash = hashFn;
 		else
 			hash = initHash;
 	}
-	public static function fromArray<K, V>(arr:Array<{key: K, value: V}>, ?fn:K->Int):Map<K, V> {
-		var map = new MapObject();
-		map.data = arr.copy();
-		if (fn != null)
-			map.hash = fn;
-		map.data.reverse();
-		return map;
-	}
 
-	public var data:Array<{key: K, value: V}>;
-
+	public var data:Trie<K,V>;
 	private var hash:K->Int;
 	
 	private function initHash(val:Dynamic):Int {

@@ -1870,13 +1870,8 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     /**
         Convert this Sequence to an Array.
     **/
-    public inline function toArray():Array<T> {
-        var result:Array<T> = [];
-        var index:Int = 0;
-        while (has(index))
-            result.push(cacheGet(index++));
-        return result;
-    }
+    public inline function toArray():Array<T>
+        return [for (v in self) v];
 
     /**
         Convert this Sequence to an immutable Map of index-value pairs.

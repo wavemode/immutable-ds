@@ -4,6 +4,8 @@ import wavemode.immutable.util.Trie;
 import buddy.BuddySuite;
 using buddy.Should;
 
+import wavemode.immutable.util.Pair;
+
 class TrieTest extends BuddySuite {
     public function new() {
 
