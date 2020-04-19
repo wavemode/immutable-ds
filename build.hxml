@@ -7,6 +7,7 @@
 -main wavemode.immutable.test.AllTests
 --macro nullSafety("wavemode.immutable", Strict)
 --macro nullSafety("wavemode.immutable.test", Off)
+--macro nullSafety("wavemode.immutable.util", Off)
 -lib buddy
 -lib stdlib
 --interp

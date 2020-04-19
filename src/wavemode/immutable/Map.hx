@@ -106,7 +106,6 @@ private class MapObject<K, V> implements MapType<K, V> {
 		exists in this Map, it will be replaced.
 	**/
 	public function set(key:K, newValue:V):Map<K, V> {
-		hash(key);
 		var i = 0, arr = data.copy();
 		var insert = true;
 		for (k => v in this) {
@@ -574,9 +573,12 @@ private class MapObject<K, V> implements MapType<K, V> {
 	/////////////////////////////////////// INTERNALS ///////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
 
-	public function new() {
+	public function new(?hashFn) {
 		data = [];
-		hash = initHash;
+		if (hashFn != null)
+			hash = hashFn;
+		else
+			hash = initHash;
 	}
 	public static function fromArray<K, V>(arr:Array<{key: K, value: V}>, ?fn:K->Int):Map<K, V> {
 		var map = new MapObject();
@@ -601,9 +603,9 @@ private class MapObject<K, V> implements MapType<K, V> {
 	}
 
 	private static function dynamicHash(val:Dynamic):Int {
-		try {
+		if (val.hashCode != null)
 			return val.hashCode();
-		} catch (err:Any) {
+		else {
 			return stringHash(Std.string(val));
 		}
 	}

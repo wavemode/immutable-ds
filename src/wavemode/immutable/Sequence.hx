@@ -14,7 +14,7 @@ import haxe.macro.Context;
 #end
 
 import stdlib.Exception;
-
+import wavemode.immutable.util.FunctionalIterator;
 using wavemode.immutable.Functional;
 
 @:using(wavemode.immutable.util.SequenceMacros)
@@ -2096,17 +2096,4 @@ private class SequenceKeyValueIterator<T> {
         else
             return { key: index, value: sequence.getValue(index++) }; 
 
-}
-
-private class FunctionalIterator<T> {
-    public inline function hasNext()
-        return _hn();
-    public inline function next()
-        return _n();
-    private var _hn:()->Bool;
-    private var _n:()->T;
-    public inline function new(hn, n) {
-        _hn = hn;
-        _n = n;
-    }
 }
