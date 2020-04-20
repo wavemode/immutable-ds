@@ -16,8 +16,7 @@ class Trie<K,V> {
     public var pair:Null<Pair<K,V>>;
     public var hash:Int = -1;
     
-    private var _keys:Null<Array<K>>;
-    private var _values:Null<Array<V>>;
+    private var _count:Null<Int>;
 
     public inline function new() {}
 
@@ -41,6 +40,7 @@ class Trie<K,V> {
     }
 
     public function insert(h:Int, p:Pair<K,V>, depth:Int = 0):Void {
+        _count = null;
         if (hash == h) {
             if (pair.key == p.key) {
                 pair.value = p.value;
@@ -323,52 +323,8 @@ class Trie<K,V> {
                 }
             }
         }
-
         return result;
     }
-
-
-    public function copyReplaceEach(oldVals:Array<V>, newVals:Array<V>):Trie<K,V> {
-        var result = this, copied = false;
-        var minLen = if (oldVals.length < newVals.length) oldVals.length else newVals.length;
-        for (i in 0...minLen) {
-            var oldVal = oldVals[i], newVal = newVals[i];
-            if (result.pair != null) {
-                if (result.pair.value == oldVal) {
-                    result = result.copy();
-                    copied = true;
-                    result.pair = new Pair(result.pair.key, newVal);
-                }
-            }
-
-            if (result.chain != null) {
-                for (i in 0...result.chain.length) {
-                    if (result.chain[i].value == oldVal) {
-                        if (!copied) {
-                            result = result.copy();
-                            copied = true;
-                        }
-                        result.chain[i] = new Pair(result.chain[i].key, newVal);
-                    }
-                }
-            }
-
-            if (result.array != null) {
-                for (i in 0...result.array.length) {
-                    if (result.array[i] != null && result.array[i].contains(oldVal)) {
-                        if (!copied) {
-                            result = result.copy();
-                            copied = true;
-                        }
-                        result.array[i] = result.array[i].copyReplace(oldVal, newVal);
-                    }
-                }
-            }
-        }
-
-        return result;
-    }
-
 
     public function retrieve(h:Int, k:K, depth = 0):Null<V> {
         if (hash == h)
@@ -430,6 +386,7 @@ class Trie<K,V> {
     }
 
     public function delete(h:Int, k:K, depth = 0):Void {
+        _count = null;
         if (depth < 6) {
             if (hash == h) {
                 if (pair.key == k) {
@@ -643,6 +600,8 @@ class Trie<K,V> {
     }
 
     public function count():Int {
+        if (_count != null)
+            return _count;
         var count = 0;
         if (pair != null)
             ++count;
@@ -652,7 +611,7 @@ class Trie<K,V> {
                     count += trie.count();
         if (chain != null)
             count += chain.length;
-        return count;
+        return _count = count;
     }
 
     public function iterator():Iterator<Pair<K,V>> {
@@ -704,4 +663,5 @@ class Trie<K,V> {
 
     private static inline function indexOf(hash:Int, depth:Int)
         return (hash & (31 << (5 * depth))) >> (5 * depth);
+
 }

@@ -8,6 +8,7 @@
 
 // TODO: contains for all types
 // TODO: robust MapType
+// TODO: expand use of keyvalueiterable
 
 package wavemode.immutable;
 
@@ -182,9 +183,22 @@ private class MapObject<K, V> implements MapType<K, V> {
 		ones.
 	**/
 	public function replaceEach(values:Sequence<V>, newVals:Sequence<V>):Map<K, V> {
-		var map = new MapObject(hash);
-		map.data = data.copyReplaceEach(values.toArray(), newVals.toArray());
-		return map;
+		var valIter = values.iterator(),
+			newIter = newVals.iterator(),
+			result = this;
+
+		var merges = [];
+
+		while (valIter.hasNext() && newIter.hasNext()) {
+			var oldVal = valIter.next(), newVal = newIter.next();
+
+			for (key => val in result) {
+				if (val == oldVal)
+					merges.push(new Map().set(key, newVal));
+			}
+		}
+
+		return result.mergeEach(merges);
 	}
 
 	/**
@@ -449,7 +463,8 @@ private class MapObject<K, V> implements MapType<K, V> {
 		return iterator();
 
 	/**
-		An iterator of this Map's entries as key-value pairs. Equivalent to `keyValueIterator()`.
+		An iterator of this Map's entries as key-value pairs. Equivalent to
+		`keyValueIterator()`.
 	**/
 	public inline function entries():Sequence<{key: K, value: V}>
 		return keyValueIterator();
@@ -530,9 +545,8 @@ private class MapObject<K, V> implements MapType<K, V> {
 	private static function dynamicHash(val:Dynamic):Int {
 		if (val.hashCode != null)
 			return val.hashCode();
-		else {
+		else
 			return stringHash(Std.string(val));
-		}
 	}
 
 	private static function stringHash(str:String):Int {

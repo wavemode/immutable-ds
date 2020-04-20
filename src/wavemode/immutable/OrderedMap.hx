@@ -24,22 +24,21 @@ abstract OrderedMap<K, V>(OrderedMapObject<K, V>) from OrderedMapObject<K, V> to
 		Create a new empty OrderedMap, or a clone of the given `object`.
 	**/
 	public function new(?object:OrderedMap<K, V>) {
-		this = new OrderedMapObject();
 		if (object != null)
-			this.data = object.unsafe().data;
+			this = object;
+		else
+			this = new OrderedMapObject();
 	}
 
 	/**
 		Create a new `OrderedMap` from a `haxe.ds.Map`
 	**/
 	@:from public static function fromMap<K, V>(map:haxe.ds.Map<K, V>):OrderedMap<K, V> {
-		var result = [];
+		var result = new OrderedMap();
 		for (k => v in map) {
-			result.push({key: k, value: v});
+			result = result.set(k, v);
 		}
-		var map = new OrderedMap();
-		map.data = result;
-		return map;
+		return result;
 	}
 
 	/**
@@ -78,114 +77,69 @@ abstract OrderedMap<K, V>(OrderedMapObject<K, V>) from OrderedMapObject<K, V> to
 	}
 
 	/**
-		Unsafe variant of `get()`. Returns the value associated with the provided key, or throws an Exception
+		Returns the value associated with the provided key, or throws an Exception
 		if the OrderedMap does not contain this key.
 	**/
 	@:arrayAccess
-	public function getValue(key: K):V {
-		for (k => v in this) {
-			if (key == k) {
-				return v;
-			}
-		}
-		throw new Exception("key $key does not exist in the map");
-	}
+	public inline function get(key: K):Null<V>
+		return this.get(key);
 
 }
 
 private class OrderedMapObject<K, V> implements MapType<K, V>  {
 
-	//////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////// OPERATIONS ///////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////
-
 	/**
-		Returns a new OrderedMap containing the new (key, value) pair. If an equivalent key already
-		exists in this OrderedMap, it will be replaced.
+		Returns a new OrderedMap containing the new (key, value) pair. If an equivalent
+		key already exists in this OrderedMap, it will be replaced.
 	**/
-	public function set(key:K, newValue:V):OrderedMap<K, V> {
-		var i = 0, arr = data.copy();
-		var insert = true;
-		for (k => v in this) {
-			if (key == k) {
-				arr[i] = {key: k, value: newValue};
-				insert = false;
-				break;
-			}
-			i++;
-		}
-		if (insert)
-			arr.push({key: key, value: newValue});
-		return fromArray(arr);
-	}
+	public function set(key:K, newValue:V):OrderedMap<K, V>
+		return new OrderedMapObject(_data.set(key, newValue), _keys.push(key));
 
 	/**
-		Returns a new OrderedMap containing the all the values in `keys` set to all values in `values`.
-		If any equivalent keys already exists in this OrderedMap, they will be replaced.
+		Returns a new OrderedMap containing the all the values in `keys` set to all values
+		in `values`. If any equivalent keys already exists in this OrderedMap, they will
+		be replaced.
 
-		This is equivalent to calling `set()` for each pair individually, but potentially more
-		efficient.
+		This is equivalent to calling `set()` for each pair individually, but potentially
+		more efficient.
 	**/
-	public function setEach(keys:Sequence<K>, values:Sequence<V>):OrderedMap<K, V> {
-		var index:Int = 0, map = this;
-		while (keys.has(index) && values.has(index)) {
-			map = map.set(keys.getValue(index), values.getValue(index));
-			++index;
-		}
-		return map;
-	}
+	public function setEach(keys:Sequence<K>, values:Sequence<V>):OrderedMap<K, V>
+		return new OrderedMapObject(_data.setEach(keys, values), _keys.pushEach(keys));
 
 	/**
-			Returns a new OrderedMap having updated the value at this key with the return value of calling `updater` with the existing value.
+		Returns a new OrderedMap having updated the value at this key with the return value
+		of calling `updater` with the existing value.
 
-			Similar to `map.set(key, updater(map.get(key)))`.
+		Similar to `map.set(key, updater(map.get(key)))`.
 
-			If `key` does not exist, this function returns the unaltered map.
+		If `key` does not exist, this function returns the unaltered map.
 	**/
-	public function update(key:K, updater:V->V):OrderedMap<K, V> {
-		var i = 0, arr = data.copy();
-		for (k => v in this) {
-			if (key == k) {
-				arr[i] = {key: k, value: updater(v)};
-				break;
-			}
-			i++;
-		}
-		return fromArray(arr);
-	}
+	public function update(key:K, updater:V->V):OrderedMap<K, V>
+		return new OrderedMapObject(_data.update(key, updater), _keys);
 
 	/**
-		Returns a new OrderedMap having updated the values at the keys in `keys` with the return values of calling `updater` with the existing values.
+		Returns a new OrderedMap having updated the values at the keys in `keys` with the
+		return values of calling `updater` with the existing values.
 		If any key in `keys` does not exist in the map, it is ignored.
 
-		Equivalent to calling `update()` for each key individually, but potentially more efficient.
+		Equivalent to calling `update()` for each key individually, but potentially more
+		efficient.
 	**/
-	public function updateEach(keys:Iterable<K>, updater:V->V):OrderedMap<K, V> {
-		var map = this;
-		for (key in keys) {
-			map = map.update(key, updater);
-		}
-		return map;
-	}
+	public function updateEach(keys:Sequence<K>, updater:V->V):OrderedMap<K, V>
+		return new OrderedMapObject(_data.updateEach(keys, updater), _keys);
 
 	/**
-		Returns a new OrderedMap having every instance of the given value replaced with the value `newVal`.
+		Returns a new OrderedMap having every instance of the given value replaced
+		with the value `newVal`.
 
 		If the value does not exist, this function returns the unaltered set.
 	**/
-	public function replace(value:V, newVal:V):OrderedMap<K, V> {
-		var i = 0, arr = data.copy();
-		for (k => v in this) {
-			if (value == v) {
-				arr[i] = {key: k, value: newVal};
-			}
-			i++;
-		}
-		return fromArray(arr);
-	}
+	public function replace(value:V, newVal:V):OrderedMap<K, V>
+		return new OrderedMapObject(_data.replace(value, newVal), _keys);
 
 	/**
-		Returns a new OrderedMap having the given values replaced with the values in `newVals`.
+		Returns a new OrderedMap having the given values replaced with the values in
+		`newVals`.
 
 		If any value does not exist, the value is ignored.
 
@@ -193,7 +147,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		potentially more efficient, and previous replacements do not affect subsequent
 		ones.
 	**/
-	public function replaceEach(values:Iterable<V>, newVals:Iterable<V>):OrderedMap<K, V> {
+	public function replaceEach(values:Sequence<V>, newVals:Sequence<V>):OrderedMap<K, V> {
 		var valIter = values.iterator(),
 			newIter = newVals.iterator(),
 			result = this;
@@ -205,129 +159,118 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 
 			for (key => val in result) {
 				if (val == oldVal)
-					merges.push([{key: key, value: newVal}]);
+					merges.push(new OrderedMap().set(key, newVal));
 			}
 		}
 
-		return result.mergeEach(merges.map(fromArray));
+		return result.mergeEach(merges);
 	}
-
-	//////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////// SELECTIONS ///////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
-		Returns the value associated with the provided key, or null if the OrderedMap does not contain this key.
+		Returns the value associated with the provided key, or null if the OrderedMap
+		does not contain this key.
 	**/
-	public function get(key:K):Null<V> {
-		for (k => v in this) {
-			if (key == k) {
-				return v;
-			}
-		}
-		return null;
-	}
+	public function get(key:K):Null<V>
+		return _data.get(key);
 	
 	/**
 		True if a key exists within this OrderedMap.
 	**/
-	public function has(key:K):Bool {
-		for (k => v in this)
-			if (key == k)
-				return true;
-		return false;
-	}
+	public function has(key:K):Bool
+		return _data.has(key);
 
 	/**
 		True if the OrderedMap is empty.
 	**/
 	public function empty():Bool
-		return length == 0;
+		return _data.empty();
 
 	/**
-		Returns the key of a given value in the map, or null if the value does not exist.
+		Returns the key of a given value in the map, or null if the value does not
+		exist.
 	**/
-	public function find(value:V):Null<K> {
-		for (k => v in this)
-			if (value == v)
-				return k;
-		return null;
-	}
+	public function find(value:V):Null<K>
+		return _data.find(value);
 
 	/**
-		Returns the first key at which `predicate` returns true, or null if no match is found.
+		Returns the first key at which `predicate` returns true, or null if no match
+		is found.
 	**/
-	public function findWhere(predicate:V->Bool):Null<K> {
-		for (k => v in this) if (predicate(v)) return k;
-		return null;
-	}
+	public function findWhere(predicate:V->Bool):Null<K>
+		return _data.findWhere(predicate);
 
 	/**
-		Returns a new OrderedMap with only the entries for which the predicate function returns true.
+		Returns a new OrderedMap with only the entries for which the predicate
+		function returns true.
 	**/
-		public function filter(predicate:(K, V) -> Bool):OrderedMap<K, V>
-			return fromArray(data.filter(pair -> predicate(pair.key, pair.value)));
+		public function filter(predicate:(K, V) -> Bool):OrderedMap<K, V> {
+			var ks = _keys;
+			var d = _data.filter((k, v) -> {
+				if (predicate(k, v)) {
+					true;
+				} else {
+					ks = ks.remove(k);
+					false;
+				}
+			});
+			return new OrderedMapObject(d, ks);
+		}
 
 	/**
 		Returns a new OrderedMap which excludes this value.
 	**/
 	public function remove(value:V):OrderedMap<K, V> {
-		var i = 0, arr = data;
-		for (v in this) {
-			if (value == v) {
-				arr = arr.slice(0, i).concat(arr.slice(i + 1));
-				--i;
+		var ks = _keys;
+		var d = _data.filter((k, v) -> {
+			if (v != value) {
+				true;
+			} else {
+				ks = ks.remove(k);
+				false;
 			}
-			i++;
-		}
-		return fromArray(arr);
+		});
+		return new OrderedMapObject(d, ks);
 	}
 
 	/**
 		Returns a new OrderedMap which excludes the provided values.
 
-		This is equivalent to calling `remove()` for each value individually, but potentially more
-		efficient.
+		This is equivalent to calling `remove()` for each value individually, but
+		potentially more efficient.
 	**/
-	public inline function removeEach(values:Iterable<V>):OrderedMap<K, V> {
-		var map = this;
-		for (value in values)
-			map = map.remove(value);
-		return map;
+	public inline function removeEach(values:Sequence<V>):OrderedMap<K, V> {
+		var ks = _keys;
+		var d = _data.filter((k, v) -> {
+			if (!values.contains(v)) {
+				true;
+			} else {
+				ks = ks.remove(k);
+				false;
+			}
+		});
+		return new OrderedMapObject(d, ks);
 	}
 
 	/**
 		Returns a new OrderedMap which excludes this key.
 	**/
 	public function delete(key:K):OrderedMap<K, V> {
-		var i = 0, arr = data;
-		for (k => v in this) {
-			if (key == k) {
-				arr = arr.slice(0, i).concat(arr.slice(i + 1));
-				break;
-			}
-			i++;
-		}
-		return fromArray(arr);
+		var d = _data.delete(key);
+		var k = _keys.remove(key);
+		return new OrderedMapObject(d, k);
 	}
 
 	/**
 		Returns a new OrderedMap which excludes the provided keys.
 
-		This is equivalent to calling `delete()` for each key individually, but potentially more
-		efficient.
+		This is equivalent to calling `delete()` for each key individually, but
+		potentially more efficient.
 	**/
-	public function deleteEach(keys:Iterable<K>):OrderedMap<K, V> {
-		var map = this;
-		for (key in keys) {
-			map = map.delete(key);
-		}
-		return map;
+	public function deleteEach(keys:Sequence<K>):OrderedMap<K, V> {
+		var d = _data.deleteEach(keys);
+		var k = _keys.removeEach(keys);
+		return new OrderedMapObject(d, k);
 	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////// TRANSFORMATIONS ////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 		Returns a new OrderedMap containing no keys or values.
@@ -335,75 +278,74 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 	public function clear():OrderedMap<K, V>
 		return new OrderedMap();
 
-
 	/**
-		Returns a new OrderedMap resulting from merging `other` into this OrderedMap. In other words, this
-		takes each entry of `other` and sets it on this OrderedMap.
+		Returns a new OrderedMap resulting from merging `other` into this OrderedMap.
+		In other words, this takes each entry of `other` and sets it on this OrderedMap.
 
-		If `mergeFunction` is provided, it is used to resolve key conflicts. If not, keys from
-		`other` override keys from this OrderedMap.
+		If `mergeFunction` is provided, it is used to resolve key conflicts. If not, keys
+		from `other` override keys from this OrderedMap.
 	**/
-	public function merge(other:OrderedMap<K, V>, ?mergeFunction:(V, V) -> V):OrderedMap<K, V> {
+	public function merge(other:KeyValueIterable<K, V>, ?mergeFunction:(V, V) -> V):OrderedMap<K, V> {
 		var result = this;
-		for (k => v1 in other) {
-			var v2 = get(k);
-			if (v2 == null || mergeFunction == null)
-				result = result.set(k, v1);
+		for (k => v in other) {
+			if (!result.has(k) || mergeFunction == null)
+				result = result.set(k, v);
 			else
-				result = result.set(k, mergeFunction(v2.sure(), v1));
+				result = result.set(k, mergeFunction(get(k).unsafe(), v));
 		}
 		return result;
 	}
 
 	/**
-		Returns a new OrderedMap resulting from merging each OrderedMap in `others` into this OrderedMap. In other words,
-		this takes each entry of each map in `others` and sets it on this OrderedMap.
+		Returns a new OrderedMap resulting from merging each OrderedMap in `others` into
+		this OrderedMap. In other words, this takes each entry of each map in `others`
+		and sets it on this OrderedMap.
 
-		If `mergeFunction` is provided, it is used to resolve key conflicts. If not, keys from
-		`others` override keys from this OrderedMap, and keys from OrderedMap objects appearing later in the
-		list override keys from earlier ones.
+		If `mergeFunction` is provided, it is used to resolve key conflicts. If not, keys
+		from `others` override keys from this OrderedMap, and keys from OrderedMap objects
+		appearing later in the list override keys from earlier ones.
 
-		This is equivalent to calling `merge()` for each map individually, but potentially more
-		efficient.
+		This is equivalent to calling `merge()` for each map individually, but potentially
+		more efficient.
 	**/
-	public function mergeEach(others:Iterable<OrderedMap<K, V>>, ?mergeFunction:(V, V) -> V):OrderedMap<K, V> { // TODO: implement
+	public function mergeEach(others:Sequence<OrderedMap<K, V>>, ?mergeFunction:(V, V) -> V):OrderedMap<K, V> { // TODO: implement
 		var result = this;
 		for (other in others)
 			result = result.merge(other, mergeFunction);
 		return result;
 	}
 
-
-	//////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////// MAPPINGS ////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////
-
-
 	/**
 		Returns a new OrderedMap with values passed through a mapper function.
 	**/
-	public function map<M>(mapper:(K, V) -> M):OrderedMap<K, M>
-		return fromArray(data.map(pair -> {key: pair.key, value: mapper(pair.key, pair.value)}));
+	public function map<M>(mapper:(K, V) -> M):OrderedMap<K, M> {
+		var d = _data.map(mapper);
+		return new OrderedMapObject(d, _keys);
+	}
 
 	/**
 		Returns a new OrderedMap with keys passed through a mapper function.
 	**/
-	public function mapKeys<M>(mapper:(K, V) -> M):OrderedMap<M, V>
-		return fromArray(data.map(pair -> {key: mapper(pair.key, pair.value), value: pair.value}));
-
-
-	//////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////// REDUCTIONS ///////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////
+	public function mapKeys<M>(mapper:(K, V) -> M):OrderedMap<M, V> {
+		var result = new OrderedMap();
+		for (k => v in this)
+			result = result.set(mapper(k, v), v);
+		return result;
+	}
 
 	/**
-		Returns the accumulation of the values in this OrderedMap according to `foldFn`, beginning
-		with `initialValue`
+		Returns the accumulation of the values in this OrderedMap according to `foldFn`,
+		beginning with `initialValue`
 
 		For example, `[1, 2, 3].fold((a, b) -> a - b, 0)` evaluates `0 - 1 - 2 - 3 = -6`
 	**/
-	public function fold<R>(foldFn:(R, V)->R, initialValue:R):R
-		return Sequence.fromIterable(this).fold(foldFn, initialValue);
+	public function fold<R>(foldFn:(R, V)->R, initialValue:R):R {
+		for (k in _keys) {
+			var v = get(k).unsafe();
+			initialValue = foldFn(initialValue, v);
+		}
+		return initialValue;
+	}
 
 	/**
 		A simpler form of `fold()`
@@ -414,35 +356,55 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 
 		Throws an Exception if the OrderedMap is empty.
 	**/
-	public function reduce(reducer:(V, V)->V):V
+	public function reduce(reducer:(V, V)->V):V {
 		if (empty())
 			throw new Exception("attempt to reduce empty OrderedMap");
-		else
-			return Sequence.fromIterable(this).reduce(reducer);
+
+		var initialValue:Null<V> = null;
+		for (k in _keys) {
+			var v = get(k).unsafe();
+			if (initialValue == null)
+				initialValue = v;
+			else
+				initialValue = reducer(initialValue, v);
+		}
+		return initialValue.unsafe();
+	}
 
 	/**
 		Number of keys that are in the map. Read-only property.
 	**/
 	public var length(get, never):Int;
-	function get_length()
-		return data.length;
+	private inline function get_length()
+		return _data.length;
 
 	/**
 		Returns true if the given `predicate` is true for every value in the OrderedMap.
 	**/
-	public function every(predicate:V->Bool):Bool
-		return Sequence.fromIterable(this).every(predicate);
+	public function every(predicate:V->Bool):Bool {
+		for (k in _keys) {
+			var v = get(k).unsafe();
+			if (!predicate(v))
+				return false;
+		}
+		return true;
+	}
 
 	/**
 		Returns true if the given `predicate` is true for any value in the OrderedMap.
 	**/
-	public function some(predicate:V->Bool):Bool
-		return Sequence.fromIterable(this).some(predicate);
+	public function some(predicate:V->Bool):Bool {
+		for (k in _keys) {
+			var v = get(k).unsafe();
+			if (predicate(v))
+				return true;
+		}
+		return false;
+	}
 
 	/**
 		True if this and the `other` Map have identical keys and values.
 	**/
-	@:generic
 	public function equals<T:MapType<K, V>>(other:T):Bool {
 		if (length != other.length)
 			return false;
@@ -459,20 +421,14 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		for (k => v in this)
 			sideEffect(k, v);
 
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////// CONVERSIONS //////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-
-
 	/**
 		Iterator over each value in the OrderedMap.
 	**/
 	public function iterator():Iterator<V> {
-		var i = 0;
+		var it = _keys.iterator();
 		return {
-			hasNext: () -> i < data.length,
-			next: () -> data[i++].value
+			hasNext: it.hasNext,
+			next: () -> get(it.next()).unsafe()
 		};
 	}
 
@@ -480,13 +436,12 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		Iterator over each key-value pair in the OrderedMap.
 	**/
 	public function keyValueIterator():KeyValueIterator<K, V> {
-		var i = 0;
+		var it = _keys.iterator();
 		return {
-			hasNext: () -> i < data.length,
-			next: () -> {
-				var result = {key: data[i].key, value: data[i].value};
-				++i;
-				result;
+			hasNext: it.hasNext,
+			next: () -> { 
+				var k = it.next();
+				{key: k, value: get(k).unsafe()};
 			}
 		};
 	}
@@ -494,25 +449,20 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 	/**
 		An iterator of this OrderedMap's keys.
 	**/
-	public function keys():Iterator<K> { // TODO: implement
-		var i = 0;
-		return {
-			hasNext: () -> i < data.length,
-			next: () -> data[i++].key
-		};
-	}
+	public inline function keys():Sequence<K>
+		return _keys;
 
 	/**
 		An iterator of this OrderedMap's keys. Equivalent to `iterator()`.
 	**/
-	public inline function values():Iterator<V>
+	public inline function values():Sequence<V>
 		return iterator();
 
 	/**
 		An iterator of this OrderedMap's entries as key-value pairs.
 	**/
 	public inline function entries():Iterator<{key: K, value: V}>
-		return data.iterator();
+		return keyValueIterator();
 
 	/**
 		Shallowly converts this OrderedMap to an Array.
@@ -572,13 +522,18 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 	/////////////////////////////////////// INTERNALS ///////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
 
-	public function new() data = [];
-	public static function fromArray<K, V>(arr:Array<{key: K, value: V}>):OrderedMap<K, V> {
-		var map = new OrderedMapObject();
-		map.data = arr;
-		return map;
+	public function new(?d, ?k) {
+		if (d != null)
+			_data = d;
+		else
+			_data = new Map();
+		if (k != null)
+			_keys = k;
+		else
+			_keys = new Vector();
 	}
 
-	public var data:Array<{key: K, value: V}>;
+	private var _data:Map<K,V>;
+	private var _keys:Vector<K>;
 
 }

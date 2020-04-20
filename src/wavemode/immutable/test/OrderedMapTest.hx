@@ -174,6 +174,7 @@ class OrderedMapTest extends BuddySuite {
 			});
 
 			it("should replace every occurrence of the given values", {
+				trace(two);
 				two.equals(OrderedMap.make({a: 5, b: 10, c: 5})).should.be(true);
 			});
 
@@ -186,7 +187,7 @@ class OrderedMapTest extends BuddySuite {
 			});
 		});
 
-		describe("get", {
+		describe("get / [index]", {
 			var one;
 
 			beforeEach({
@@ -195,29 +196,12 @@ class OrderedMapTest extends BuddySuite {
 
 			it("should retrieve existing keys", {
 				one.get("a").should.be(10);
-			});
-
-			it("should return null for nonexisting keys", {
-				one.get("d").should.be(null);
-			});
-		});
-		
-
-		describe("getValue [index]", {
-			var one;
-
-			beforeEach({
-				one = OrderedMap.make({a: 10, b: 20, c: 30});
-			});
-
-			it("should retrieve existing keys", {
-				one.getValue("a").should.be(10);
 				one["a"].should.be(10);
 			});
 
-			it("should throw an exception for nonexisting keys", {
-				(() -> one.getValue("d")).should.throwAnything();
-				(() -> one["d"]).should.throwAnything();
+			it("should return null for nonexisting keys", {
+				(one.get("d") == null).should.be(true);
+				(one["d"] == null).should.be(true);
 			});
 		});
 		
@@ -681,7 +665,7 @@ class OrderedMapTest extends BuddySuite {
 
 			beforeEach({
 				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				iter = one.keys();
+				iter = one.keys().iterator();
 			});
 
 			it("should iterate over each key in order", {
@@ -695,7 +679,7 @@ class OrderedMapTest extends BuddySuite {
 
 			beforeEach({
 				one = OrderedMap.make({a: 10, b: 20, c: 30});
-				iter = one.values();
+				iter = one.values().iterator();
 			});
 
 			it("should iterate over each value in order", {

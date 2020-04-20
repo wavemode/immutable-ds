@@ -465,7 +465,7 @@ class VectorTest extends BuddySuite {
 
 			it("should return null for out-of-bounds access", {
 
-				Vector.make(1, 2, 3, 4).get(4).should.be(null);
+				Vector.make(1, 2, 3, 4).get(4).should.be(cast null);
 
 			});
 

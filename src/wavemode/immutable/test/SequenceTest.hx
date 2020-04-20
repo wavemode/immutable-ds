@@ -243,7 +243,7 @@ class SequenceTest extends BuddySuite {
 
             it("should return null for out-of-bounds access", {
 
-                Sequence.make(1, 2, 3, 4).get(4).should.be(null);
+                (Sequence.make(1, 2, 3, 4).get(4) == null).should.be(true);
 
             });
 
@@ -459,7 +459,7 @@ class SequenceTest extends BuddySuite {
 
             it("should work normally for null values", {
 
-                Sequence.fromIterable(([1, null, 3, null, 5] : Array<Null<Int>>)).remove(null).equals([1, 3, 5]).should.be(true);
+                Sequence.fromIterable(([1, null, 3, null, 5] : Array<Null<Int>>)).remove(cast null).equals([1, 3, 5]).should.be(true);
 
             });
 

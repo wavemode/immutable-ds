@@ -202,8 +202,8 @@ class MapTest extends BuddySuite {
 			});
 
 			it("should return null for nonexisting keys", {
-				one.get("d").should.be(null);
-				one["d"].should.be(null);
+				(one.get("d") == null).should.be(true);
+				(one["d"] == null).should.be(true);
 			});
 		});
 		
