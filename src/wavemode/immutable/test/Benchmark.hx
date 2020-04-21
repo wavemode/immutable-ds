@@ -8,38 +8,137 @@ import haxe.macro.Expr;
 import haxe.Timer;
 
 class Benchmark {
+    static inline final NUM_TRIALS = 10;
+
     static function main() {
-        // bench("Array.push",
-        //     var arr = [],
-        //     arr.push(10));
-        // bench("haxe.ds.Map.set",
-        //     var map = new haxe.ds.Map(),
-        //     map.set(__i__, __i__));
-        bench("Map.set", 
-            var map = new Map(),
-            map = map.set(__i__, __i__));
-        // bench("Map.get",
-        //     var map = new Map().setEach(Sequence.step().take(1000000), Sequence.step().take(1000000)),
-        //     var val = map.get(__i__));
-        // bench("Vector.push",
-        //     var vec = new Vector(),
-        //     vec = vec.push(10));
-        // bench("Sequence.push",
-        //     var vec = new Sequence(),
-        //     vec = vec.push(10)
-        // );
-        // bench("OrderedMap.set", 
-        //     var map = new OrderedMap(),
-        //     map = map.set(__i__, __i__)
-        // );
-        // bench("Set.add", 
-        //     var set = new Set(),
-        //     set = set.add(__i__)
-        // );
-        // bench("OrderedSet.add", 
-        //     var set = new OrderedSet(),
-        //     set = set.add(__i__)
-        // );
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("Vector.get (1K elements)", 
+                var vec = new Vector().pushEach(Sequence.step().take(1000)),
+                vec.get(__i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("Vector.get (100K elements)", 
+                var vec = new Vector().pushEach(Sequence.step().take(100000)),
+                vec.get(__i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("Vector.push (1K elements)", 
+                var vec = new Vector().pushEach(Sequence.step().take(1000)),
+                vec.push(__i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("Vector.push (100K elements)", 
+                var vec = new Vector().pushEach(Sequence.step().take(100000)),
+                vec.push(__i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("Map.get (1K elements)", 
+                var map = new Map().setEach(Sequence.step().take(1000), Sequence.step().take(1000)),
+                map.get(__i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("Map.get (100K elements)", 
+                var map = new Map().setEach(Sequence.step().take(100000), Sequence.step().take(100000)),
+                map.get(__i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("Map.set (1K elements)", 
+                var map = new Map().setEach(Sequence.step().take(1000), Sequence.step().take(1000)),
+                map.set(__i__, __i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("Map.set (100K elements)", 
+                var map = new Map().setEach(Sequence.step().take(100000), Sequence.step().take(100000)),
+                map.set(__i__, __i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("OrderedMap.get (1K elements)", 
+                var map = new OrderedMap().setEach(Sequence.step().take(1000), Sequence.step().take(1000)),
+                map.get(__i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("OrderedMap.get (100K elements)", 
+                var map = new OrderedMap().setEach(Sequence.step().take(100000), Sequence.step().take(100000)),
+                map.get(__i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("OrderedMap.set (1K elements)", 
+                var map = new OrderedMap().setEach(Sequence.step().take(1000), Sequence.step().take(1000)),
+                map.set(__i__, __i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("OrderedMap.set (100K elements)", 
+                var map = new OrderedMap().setEach(Sequence.step().take(100000), Sequence.step().take(100000)),
+                map.set(__i__, __i__));
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("Set.add (1K elements)", 
+                var set = new Set().addEach(Sequence.step().take(1000)),
+                set.add(__i__)
+            );
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');
+            bench("Set.add (100K elements)", 
+                var set = new Set().addEach(Sequence.step().take(100000)),
+                set.add(__i__)
+            );
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');            
+            bench("Set.has (1K elements)", 
+                var set = new Set().addEach(Sequence.step().take(1000)),
+                set.has(__i__)
+            );
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');            
+            bench("Set.has (100K elements)", 
+                var set = new Set().addEach(Sequence.step().take(100000)),
+                set.has(__i__)
+            );
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');   
+            bench("OrderedSet.add (1K elements)", 
+                var set = new OrderedSet().addEach(Sequence.step().take(1000)),
+                set.add(__i__)
+            );
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');   
+            bench("OrderedSet.add (100K elements)", 
+                var set = new OrderedSet().addEach(Sequence.step().take(100000)),
+                set.add(__i__)
+            );
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');   
+            bench("OrderedSet.has (1K elements)", 
+                var set = new OrderedSet().addEach(Sequence.step().take(1000)),
+                set.has(__i__)
+            );
+        }
+        for (i in 0...NUM_TRIALS) {
+            Sys.print('(trial ${i+1}) ');   
+            bench("OrderedSet.has (100K elements)", 
+                var set = new OrderedSet().addEach(Sequence.step().take(100000)),
+                set.has(__i__)
+            );
+        }
     }
 
     static macro function bench(label:String, setup:Expr, expr:Expr):Expr {

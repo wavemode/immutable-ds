@@ -1,12 +1,13 @@
 package wavemode.immutable.util;
 
 class Stack<T> {
-    public function new(?v, ?n) {
-        value = v;
-        next = n;
+    public function new() {}
+    public inline function push(value:T):Stack<T> {
+        var result = new Stack();
+        result.value = value;
+        result.next = this;
+        return result;
     }
-    public inline function push(value:T):Stack<T>
-        return new Stack(value, this);
     public inline function pop():Null<Stack<T>>
         return next;
     public inline function top():Null<T>
@@ -22,6 +23,14 @@ class Stack<T> {
         }
         return new FunctionalIterator(hn, n);
     }
-    private var value:Null<T>;
-    private var next:Null<Stack<T>>;
+    public function reverse():Stack<T> {
+        var result = new Stack();
+        for (v in this)
+            result = result.push(v);
+        return result;
+    }
+    public function empty():Bool
+        return value == null;
+    public var value(default, null):Null<T>;
+    public var next(default, null):Null<Stack<T>>;
 }

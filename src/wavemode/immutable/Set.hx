@@ -13,6 +13,7 @@ import haxe.macro.Expr;
 #end
 
 import stdlib.Exception;
+import wavemode.immutable.util.Trie;
 
 @:forward
 abstract Set<T>(SetObject<T>) from SetObject<T> to SetObject<T> {
@@ -69,16 +70,9 @@ private class SetObject<T> {
 		exists in this Set, this function returns the unaltered Set.
 	**/
 	public function add(val:T):Set<T> {
-		for (v in this) {
-			if (val == v) {
-				return this;
-			}
-		}
-		var arr = data.copy();
-		arr.insert(0, val);
-		var set = new Set();
-		set.data = arr;
-		return set.shuffle();
+		var result = new Set();
+		result.data = data.set(val, true);
+		return result;
 	}
 
 	/**
@@ -89,11 +83,9 @@ private class SetObject<T> {
 		efficient.
 	**/
 	public function addEach(values:Sequence<T>):Set<T> {
-		var set = this;
-		for (val in values) {
-			set = set.add(val);
-		}
-		return set.shuffle();
+		var result = new Set();
+		result.data = data.setEach(values, Sequence.repeat(true));
+		return result;
 	}
 
 	/**
@@ -102,15 +94,9 @@ private class SetObject<T> {
 		If the value does not exist, this function returns the unaltered set.
 	**/
 	public function replace(value:T, newVal:T):Set<T> {
-		var i = 0, arr = data.copy();
-		for (v in this) {
-			if (value == v) {
-				arr[i] = newVal;
-				break;
-			}
-			i++;
-		}
-		return Set.fromSequence(arr);
+		var result = new Set();
+		result.data = data.delete(value).set(newVal, true);
+		return result;
 	}
 
 	/**
@@ -122,52 +108,45 @@ private class SetObject<T> {
 		potentially more efficient.
 	**/
 	public function replaceEach(values:Sequence<T>, newVals:Sequence<T>):Set<T> {
-		var valIter = values.iterator(),
-			newIter = newVals.iterator(),
-			result = this;
-		while (valIter.hasNext() && newIter.hasNext()) {
-			result = result.replace(valIter.next(), newIter.next());
-		}
+		var result = new Set();
+		result.data = data.deleteEach(values).setEach(newVals, Sequence.repeat(true));
 		return result;
 	}
 
 	/**
-		True if a value exists within this Set.
+		True if the given value exists within this Set.
 	**/
-	public function has(val:T):Bool {
-		for (v in this) {
-			if (val == v) {
-				return true;
-			}
-		}
-		return false;
-	}
+	public inline function has(val:T):Bool
+		return data.has(val);
+
+	/**
+		True if the given value exists within this Set.
+	**/
+	public inline function contains(val:T):Bool
+		return data.has(val);
 
 	/**
 		True if the Set is empty.
 	**/
 	public function empty():Bool
-		return length == 0;
+		return data.length == 0;
 
 	/**
 		Returns a new Set with only the entries for which the predicate function returns true.
 	**/
-		public function filter(predicate:T->Bool):Set<T>
-			return Set.fromSequence(data.filter(value -> predicate(value)));
+		public function filter(predicate:T->Bool):Set<T> {
+			var result = new Set();
+			result.data = data.filter((k, v) -> predicate(k));
+			return result;
+		}
 
 	/**
 		Returns a new Set which excludes this key.
 	**/
 	public function remove(value:T):Set<T> {
-		var i = 0, arr = data;
-		for (v in this) {
-			if (value == v) {
-				arr = arr.slice(0, i).concat(arr.slice(i + 1));
-				break;
-			}
-			i++;
-		}
-		return Set.fromSequence(arr);
+		var result = new Set();
+		result.data = data.delete(value);
+		return result;
 	}
 
 	/**
@@ -177,11 +156,9 @@ private class SetObject<T> {
 		efficient.
 	**/
 	public function removeEach(values:Sequence<T>):Set<T> {
-		var set = this;
-		for (v in values) {
-			set = set.remove(v);
-		}
-		return set;
+		var result = new Set();
+		result.data = data.deleteEach(values);
+		return result;
 	}
 
 	/**
@@ -243,7 +220,7 @@ private class SetObject<T> {
 		Returns a new Set with values passed through a mapper function.
 	**/
 		public function map<M>(mapper:T->M):Set<M>
-			return Set.fromSequence(data.map(value -> mapper(value)));
+			return new Set().addEach(data.keys().map(mapper));
 
 	/**
 		Returns a new Set containing only values that appear in this set and in `other`.
@@ -354,28 +331,23 @@ private class SetObject<T> {
 	/**
 		Iterator over each value in the Set.
 	**/
-	public function iterator():Iterator<T> {
-		var i = 0;
-		return {
-			hasNext: () -> i < data.length,
-			next: () -> data[i++]
-		};
-	}
+	public inline function iterator():Iterator<T>
+		return data.keys().iterator();
 
 	/**
 		An iterator of this Set's keys. Equivalent to `iterator()`.
 	**/
-	public function values():Iterator<T>
-		return iterator();
+	public inline function values():Sequence<T>
+		return data.keys();
 
 	/**
 		Converts this Set to an Array.
 	**/
 	public function toArray():Array<T>
-		return [for (v in values()) v];
+		return [for (v in this) v];
 
 	/**
-		Converts this Set to a Set.
+		Converts this Set to an OrderedSet.
 	**/
 	public function toOrderedSet():OrderedSet<T>
 		return new OrderedSet().addEach(values());
@@ -409,18 +381,7 @@ private class SetObject<T> {
 	public function toSequence():Sequence<T>
 		return Sequence.fromIterable(this);
 
-
-	public function new() data = [];
-	private var data:Array<T>;
-
-	private function shuffle():Set<T> {
-		for (index in 0...data.length) {
-			var newIndex = Std.random(data.length - index) + index;
-			var temp = data[newIndex];
-			data[newIndex] = data[index];
-			data[index] = temp;
-		}
-		return this;
-	}
+	public function new() data = new Map();
+	private var data:Map<T,Bool>;
 
 }

@@ -2,666 +2,352 @@ package wavemode.immutable.util;
 
 import stdlib.Exception;
 import haxe.ds.Vector;
-
-// TODO: unroll recursion
+using haxe.EnumTools.EnumValueTools;
+using wavemode.immutable.Functional;
 
 /**
     A hash array mapped trie.
 **/
-@:nullSafety(Off)
-class Trie<K,V> {
-    public var array:Null<Vector<Trie<K,V>>>;
-    public var chain:Null<Array<Pair<K,V>>>;
-    public var length:Int = 0;
-    public var pair:Null<Pair<K,V>>;
-    public var hash:Int = -1;
-    
-    private var _count:Null<Int>;
+@:using(wavemode.immutable.util.Trie.TrieTools)
+enum Trie<K,V> {
+    Value(hash:Int, key:K, value:V);
+    Tree(children:Vector<Null<Trie<K,V>>>);
+    Chain(hash:Int, pairs:Stack<Pair<K,V>>);
+}
 
-    public inline function new() {}
+class TrieTools {
 
-    public inline function copy():Trie<K,V> {
-        var result = new Trie();
-        if (pair != null) {
-            result.hash = hash;
-            result.pair = pair;
-        }
-        if (array != null) {
-            result.length = length;
-            result.array = new Vector(32);
-            for (i in 0...32)
-                result.array[i] = array[i];
-        }
-        if (chain != null) {
-            result.length = length;
-            result.chain = chain.copy();
+    private static inline function copy<K,V>(vec:Vector<Null<Trie<K,V>>>):Vector<Null<Trie<K,V>>> {
+        var result = new Vector(32);
+        var i = 0;
+        while (i < 32) {
+            result[i] = vec[i];
+            ++i;
         }
         return result;
-    }
-
-    public function insert(h:Int, p:Pair<K,V>, depth:Int = 0):Void {
-        _count = null;
-        if (hash == h) {
-            if (pair.key == p.key) {
-                pair.value = p.value;
-                return;
-            }
-        }
-        if (hash == -1 && length == 0) {
-            pair = p;
-            hash = h;
-        } else if (hash != -1 && length == 0) {
-            if (depth < 6) {
-                array = new Vector(32);
-                var obj = new Trie();
-                obj.hash = hash;
-                obj.pair = pair;
-                array[indexOf(obj.hash, depth)] = obj;
-                hash = -1;
-                pair = null;
-                length = 1;
-                insert(h, p, depth);
-            } else if (depth >= 6) {
-                chain = [p];
-                ++length;
-            }
-        } else if (hash == -1 && length != 0) {
-            var index = indexOf(h, depth);
-            if (array[index] == null) {
-                var obj = new Trie();
-                obj.insert(h, p);
-                array[index] = obj;
-                ++length;
-            } else {
-                array[index].insert(h, p, depth + 1);
-            }
-        } else { // hash != -1 && length != 0
-            for (i in 0...length) {
-                if (chain[i].key == p.key) {
-                    chain[i].value = p.value;
-                    return;
-                }
-            }
-            chain.push(p);
-            ++length;
-        }
-    }
-
-
-    public function copyInsert(h:Int, p:Pair<K,V>, depth:Int = 0):Trie<K,V> {
-        if (hash == h) {
-            if (pair.key == p.key) {
-                var clone = copy();
-                clone.pair = new Pair(p.key, p.value);
-                return clone;
-            }
-        }
-        if (hash == -1 && length == 0) {
-            var obj = copy();
-            obj.pair = p;
-            obj.hash = h;
-            return obj;
-        } else if (hash != -1 && length == 0) {
-            if (depth < 6) {
-                var clone = copy();
-                clone.array = new Vector(32);
-                var obj = new Trie();
-                obj.hash = hash;
-                obj.pair = pair;
-                clone.array[indexOf(obj.hash, depth)] = obj;
-                clone.hash = -1;
-                clone.pair = null;
-                clone.length = 1;
-                clone.insert(h, p, depth);
-                return clone;
-            } else if (depth >= 6) {
-                var clone = copy();
-                clone.chain = [p];
-                ++clone.length;
-                return clone;
-            }
-        } else if (hash == -1 && length != 0) {
-            var index = indexOf(h, depth);
-            if (array[index] == null) {
-                var obj = new Trie();
-                obj.insert(h, p);
-                var clone = copy();
-                clone.array[index] = obj;
-                ++clone.length;
-                return clone;
-            } else {
-                var clone = copy();
-                clone.array[index] = clone.array[index].copyInsert(h, p, depth + 1);
-                return clone;
-            }
-        } else { // hash != -1 && length != 0
-            for (i in 0...length) {
-                if (chain[i].key == p.key) {
-                    var clone = copy();
-                    clone.chain[i] = new Pair(p.key, p.value);
-                    return clone;
-                }
-            }
-            var clone = copy();
-            clone.chain.push(p);
-            ++clone.length;
-            return clone;
-        }
-        return this;
-    }
-
-
-    public function copyInsertEach(hashes:Array<Int>, pairs:Array<Pair<K,V>>, depth:Int = 0):Trie<K,V> {
-        var result = copy();
-        var minLen = if (hashes.length < pairs.length) hashes.length else pairs.length;
-        for (i in 0...minLen) {
-            var h = hashes[i];
-            var p = pairs[i];
-            if (result.hash == h) {
-                if (result.pair.key == p.key) {
-                    result.pair = new Pair(p.key, p.value);
-                    continue;
-                }
-            }
-            if (result.hash == -1 && result.length == 0) {
-                result.pair = p;
-                result.hash = h;
-                continue;
-            } else if (result.hash != -1 && result.length == 0) {
-                if (depth < 6) {
-                    result.array = new Vector(32);
-                    var obj = new Trie();
-                    obj.hash = result.hash;
-                    obj.pair = result.pair;
-                    result.array[indexOf(obj.hash, depth)] = obj;
-                    result.hash = -1;
-                    result.pair = null;
-                    result.length = 1;
-                    result.insert(h, p, depth);
-                    continue;
-                } else if (depth >= 6) {
-                    result.chain = [p];
-                    ++result.length;
-                    continue;
-                }
-            } else if (result.hash == -1 && result.length != 0) {
-                var index = indexOf(h, depth);
-                if (result.array[index] == null) {
-                    var obj = new Trie();
-                    obj.insert(h, p);
-                    result.array[index] = obj;
-                    ++result.length;
-                    continue;
-                } else {
-                    result.array[index] = result.array[index].copyInsert(h, p, depth + 1);
-                    continue;
-                }
-            } else { // result.hash != -1 && result.length != 0
-                for (i in 0...result.length) {
-                    if (result.chain[i].key == p.key) {
-                        result.chain[i] = new Pair(p.key, p.value);
-                        continue;
-                    }
-                }
-                result.chain.push(p);
-                ++result.length;
-                continue;
-            }
-        }
-        return result;
-    }
-
-
-    public function copyUpdate(h:Int, k:K, fn:V->V, depth:Int = 0):Trie<K,V> {
-        if (hash == h) {
-            if (pair.key == k) {
-                var clone = copy();
-                clone.pair = new Pair(pair.key, fn(pair.value));
-                return clone;
-            }
-            if (chain != null) {
-                for (i in 0...chain.length) {
-                    var pair = chain[i];
-                    if (pair.key == k) {
-                        var clone = copy();
-                        clone.chain[i] = new Pair(pair.key, fn(pair.value));
-                        return clone;
-                    }
-                }
-            }
-        }
-
-        if (array != null) {
-            var index = indexOf(h, depth);
-            if (array[index] != null && (depth > 0 || array[index].retrieve(h, k) != null)) {
-                var clone = copy();
-                clone.array[index] = clone.array[index].copyUpdate(h, k, fn, depth + 1);
-                return clone;
-            }
-        }
-
-        return this;
-
-    }
-
-    public function copyUpdateEach(hashes:Array<Int>, keys:Array<K>, fn:V->V, depth:Int = 0):Trie<K,V> {
-        var clone = this, copied = false;
-        var minLen = if (hashes.length < keys.length) hashes.length else keys.length;
-        for (i in 0...minLen) {
-            var h = hashes[i], k = keys[i];
-            if (clone.hash == h) {
-                if (clone.pair.key == k) {
-                    if (!copied) {
-                        clone = copy();
-                        copied = true;
-                    }
-                    clone.pair = new Pair(clone.pair.key, fn(clone.pair.value));
-                    continue;
-                }
-                if (clone.chain != null) {
-                    for (i in 0...clone.chain.length) {
-                        var pair = clone.chain[i];
-                        if (pair.key == k) {
-                            if (!copied) {
-                                clone = copy();
-                                copied = true;
-                            }
-                            clone.chain[i] = new Pair(pair.key, fn(pair.value));
-                            continue;
-                        }
-                    }
-                }
-            }
-            if (clone.array != null) {
-                var index = indexOf(h, depth);
-                if (clone.array[index] != null && (depth > 0 || clone.array[index].retrieve(h, k) != null)) {
-                    if (!copied) {
-                        clone = copy();
-                        copied = true;
-                    }
-                    clone.array[index] = clone.array[index].copyUpdate(h, k, fn, depth + 1);
-                    continue;
-                }
-            }
-        }
-
-        return clone;
-
-    }
-
-    public function copyReplace(oldVal:V, newVal:V):Trie<K,V> {
-        var result = this, copied = false;
-
-        if (result.pair != null) {
-            if (result.pair.value == oldVal) {
-                result = result.copy();
-                copied = true;
-                result.pair = new Pair(result.pair.key, newVal);
-            }
-        }
-
-        if (result.chain != null) {
-            for (i in 0...result.chain.length) {
-                if (result.chain[i].value == oldVal) {
-                    if (!copied) {
-                        result = result.copy();
-                        copied = true;
-                    }
-                    result.chain[i] = new Pair(result.chain[i].key, newVal);
-                }
-            }
-        }
-
-        if (result.array != null) {
-            for (i in 0...result.array.length) {
-                if (result.array[i] != null && result.array[i].contains(oldVal)) {
-                    if (!copied) {
-                        result = result.copy();
-                        copied = true;
-                    }
-                    result.array[i] = result.array[i].copyReplace(oldVal, newVal);
-                }
-            }
-        }
-        return result;
-    }
-
-    public function retrieve(h:Int, k:K, depth = 0):Null<V> {
-        if (hash == h)
-            if (pair.key == k)
-                return pair.value;
-
-        if (chain != null)
-            for (pair in chain)
-                if (pair.key == k)
-                    return pair.value;
-
-        if (array != null) {
-            var index = indexOf(h, depth);
-            if (array[index] != null)
-                return array[index].retrieve(h, k, depth + 1);
-        }
-
-        return null;
-    }
-
-    public function contains(v:V):Bool {
-        if (pair != null)
-            if (pair.value == v)
-                return true;
-
-        if (chain != null)
-            for (pair in chain)
-                if (pair.value == v)
-                    return true;
-
-        if (array != null) {
-            for (index in 0...array.length)
-                if (array[index] != null && array[index].contains(v))
-                    return true;
-        }
-
-        return false;
-    }
-
-    public function has(h:Int, k:K, depth = 0):Bool {
-        if (hash == h) {
-        
-            if (pair.key == k)
-                return true;
-
-            if (chain != null)
-                for (pair in chain)
-                    if (pair.key == k)
-                        return true;
-        
-        }
-
-        if (array != null) {
-            var index = indexOf(h, depth); 
-            if (array[index] != null)
-                return array[index].has(h, k, depth + 1);
-        }
-        return false;
-    }
-
-    public function delete(h:Int, k:K, depth = 0):Void {
-        _count = null;
-        if (depth < 6) {
-            if (hash == h) {
-                if (pair.key == k) {
-                    hash = -1;
-                    pair = null;
-                    return;
-                }
-            }
-            if (array != null) {
-                var index = indexOf(h, depth);
-                if (array[index] != null)
-                    array[index].delete(h, k, depth + 1);
-                return;
-            }
-        } else {
-            if (hash == h) {
-                if (pair.key == k) {
-                    if (chain != null) {
-                        pair = chain[chain.length - 1];
-                        --length;
-                        if (chain.length == 1)
-                            chain = null;
-                        else
-                            chain.remove(pair);
-                    } else {
-                        hash = -1;
-                        pair = null;
-                    }
-                    return;
-                }
-            }
-            if (chain != null) {
-                for (i in 0...chain.length) {
-                    if (chain[i].key == k) {
-                        if (chain.length == 1)
-                            chain = null;
-                        else
-                            chain.remove(chain[i]);
-                        --length;
-                        return;
-                    }
-                }
-            }
-        }
-    }
-
-    public function copyDelete(h:Int, k:K, depth = 0):Trie<K,V> {
-        if (depth < 6) {
-            if (hash == h) {
-                if (pair.key == k) {
-                    return new Trie();
-                }
-            }
-            if (array != null) {
-                var index = indexOf(h, depth);
-                if (array[index] != null) {
-                    var clone = copy();
-                    clone.array[index] = array[index].copyDelete(h, k, depth + 1);
-                    return clone;
-                }
-            }
-        } else {
-            if (hash == h) {
-                if (pair.key == k) {
-                    if (chain == null) {
-                        return new Trie();
-                    } else {
-                        var clone = copy();
-                        clone.pair = chain[chain.length - 1];
-                        --clone.length;
-                        if (clone.chain.length == 1)
-                            clone.chain = null;
-                        else
-                            clone.chain.remove(pair);
-                        return clone;
-                    }
-                }
-            }
-            if (chain != null) {
-                for (i in 0...chain.length) {
-                    if (chain[i].key == k) {
-                        var clone = copy();
-                        if (clone.chain.length == 1)
-                            clone.chain = null;
-                        else
-                            clone.chain.remove(chain[i]);
-                        --clone.length;
-                        return clone;
-                    }
-                }
-            }
-        }
-        return this;
-    }
-
-    public function copyDeleteEach(hashes:Array<Int>, keys:Array<K>, depth = 0):Trie<K,V> {
-        var clone = this, copied = false;
-        var minLen = if (hashes.length < keys.length) hashes.length else keys.length;
-        for (i in 0...minLen) {
-            var h = hashes[i], k = keys[i];
-            if (depth < 6) {
-                if (hash == h) {
-                    if (pair.key == k) {
-                        return new Trie();
-                    }
-                }
-                if (array != null) {
-                    var index = indexOf(h, depth);
-                    if (array[index] != null) {
-                        if (!copied) {
-                            clone = copy();
-                            copied = true;
-                        }
-                        clone.array[index] = array[index].copyDelete(h, k, depth + 1);
-                        continue;
-                    }
-                }
-            } else {
-                if (clone.hash == h) {
-                    if (clone.pair.key == k) {
-                        if (clone.chain == null) {
-                            return new Trie();
-                        } else {
-                            if (!copied) {
-                                clone = copy();
-                                copied = true;
-                            }
-                            clone.pair = chain[chain.length - 1];
-                            --clone.length;
-                            if (clone.chain.length == 1)
-                                clone.chain = null;
-                            else
-                                clone.chain.remove(pair);
-                            continue;
-                        }
-                    }
-                }
-                if (clone.chain != null) {
-                    for (i in 0...clone.chain.length) {
-                        if (clone.chain[i].key == k) {
-                            if (!copied) {
-                                clone = copy();
-                                copied = true;
-                            }
-                            if (clone.chain.length == 1)
-                                clone.chain = null;
-                            else
-                                clone.chain.remove(chain[i]);
-                            --clone.length;
-                        }
-                    }
-                }
-            }
-        }
-        return clone;
-    }
-
-    public function copyFilter(predicate:(K,V)->Bool, depth = 0):Trie<K,V> {
-        var clone = this, copied = false;
-        if (depth < 6) {
-            if (clone.pair != null && !predicate(clone.pair.key, clone.pair.value))
-                return new Trie();
-            if (clone.array != null) {
-                for (i in 0...clone.array.length) {
-                    if (clone.array[i] != null) {
-                        if (!copied) {
-                            clone = copy();
-                            copied = true;
-                        }
-                        clone.array[i] = clone.array[i].copyFilter(predicate, depth + 1);
-                    }
-                }
-            }
-        } else {
-            if (clone.pair != null) {
-                if (!predicate(clone.pair.key, clone.pair.value)) {
-                    if (clone.chain == null) {
-                        return new Trie();
-                    } else {
-                        if (!copied) {
-                            clone = copy();
-                            copied = true;
-                        }
-                        clone.pair = chain[chain.length - 1];
-                        --clone.length;
-                        if (clone.chain.length == 1)
-                            clone.chain = null;
-                        else
-                            clone.chain.remove(pair);
-                        return clone;
-                    }
-                }
-            }
-            if (clone.chain != null) {
-                for (i in 0...clone.chain.length) {
-                    if (!predicate(clone.chain[i].key, clone.chain[i].value)) {
-                        if (!copied) {
-                            clone = copy();
-                            copied = true;
-                        }
-                        if (clone.chain.length == 1)
-                            clone.chain = null;
-                        else
-                            clone.chain.remove(chain[i]);
-                        --clone.length;
-                    }
-                }
-            }
-        }
-        return clone;
-    }
-
-    public function count():Int {
-        if (_count != null)
-            return _count;
-        var count = 0;
-        if (pair != null)
-            ++count;
-        if (array != null)
-            for (trie in array)
-                if (trie != null)
-                    count += trie.count();
-        if (chain != null)
-            count += chain.length;
-        return _count = count;
-    }
-
-    public function iterator():Iterator<Pair<K,V>> {
-
-        var nextVal:Pair<K,V> = pair;
-        var valid = nextVal != null;
-
-        var chainDone = chain == null;
-        var index = 0;
-        var it:Null<Iterator<Pair<K,V>>>;
-
-        function gv():Void {
-            if (!valid) {
-                if (!chainDone) {
-                    if (index >= chain.length) {
-                        chainDone = true;
-                        index = 0;
-                    } else {
-                        nextVal = chain[index++];
-                        valid = true;
-                        return;
-                    }
-                }
-                if (array == null)
-                    return;
-                while (it == null || !it.hasNext()) {
-                    if (index >= 32)
-                        return;
-                    var trie = array[index++];
-                    if (trie != null) {
-                        it = trie.iterator();
-                    }
-                }
-                nextVal = it.next();
-                valid = true;
-            }
-        }
-        function hn():Bool {
-            gv();
-            return valid;
-        }
-        function n():Pair<K,V> {
-            gv();
-            valid = false;
-            return nextVal;
-        }
-        return new FunctionalIterator(hn, n);
     }
 
     private static inline function indexOf(hash:Int, depth:Int)
         return (hash & (31 << (5 * depth))) >> (5 * depth);
+
+    public static function insert<K,V>(node:Null<Trie<K,V>>, h:Int, k:K, v:V, depth:Int = 0):Null<Trie<K,V>> {
+        if (node == null)
+            return Value(h, k, v);
+        switch node {
+            case Value(hash, key, value):
+                if (depth >= 6) {
+                    return Chain(h, new Stack().push(new Pair(key, value)).push(new Pair(k, v)));
+                }
+                if (hash == h) {
+                    if (key == k) {
+                        return Value(h, k, v);
+                    }
+                }
+                var vec = new Vector(32);
+                var index = indexOf(hash, depth);
+                var newIndex = indexOf(h, depth);
+                vec[index] = Value(hash, key, value);
+                var tree = Tree(vec);
+                if (index == newIndex) {
+                    return insert(tree, h, k, v, depth);
+                } else {
+                    vec[newIndex] = Value(h, k, v);
+                    return tree;
+                }
+            case Tree(children):
+                var vec = copy(children);
+                var index = indexOf(h, depth);
+                if (vec[index] == null) {
+                    vec[index] = Value(h, k, v);
+                } else {
+                    vec[index] = insert(vec[index], h, k, v, depth+1);
+                }
+                return Tree(vec);
+            case Chain(hash, pairs):
+                return Chain(hash, pairs.push(new Pair(k, v)));
+        }
+    }
+
+    public static function update<K,V>(node:Null<Trie<K,V>>, h:Int, k:K, fn:V->V, depth:Int = 0):Null<Trie<K,V>> {
+        if (node == null)
+            return node;
+        switch node {
+            case Value(hash, key, value):
+                if (hash == h) {
+                    if (key == k) {
+                        return Value(h, k, fn(value));
+                    }
+                }
+            case Tree(children):
+                var index = indexOf(h, depth);
+                if (children[index] != null) {
+                    var vec = copy(children);
+                    vec[index] = update(vec[index], h, k, fn, depth+1);
+                    return Tree(vec);
+                }
+            case Chain(hash, pairs):
+                var stack = new Stack();
+                for (pair in pairs)
+                    if (pair.key == k)
+                        stack = stack.push(new Pair(k, fn(pair.value)));
+                    else
+                        stack = stack.push(pair);
+                return Chain(hash, stack);
+        }
+        return node;
+    }
+
+    public static function replace<K,V>(node:Null<Trie<K,V>>, oldVal:V, newVal:V):Null<Trie<K,V>> {
+        if (node == null)
+            return null;
+        switch node {
+            case Value(hash, key, value):
+                if (value == oldVal) {
+                    return Value(hash, key, newVal);
+                }
+            case Tree(children):
+                var vec = children, copied = false;
+                for (i in 0...32) {
+                    if (contains(children[i], oldVal)) {
+                        if (!copied) {
+                            vec = copy(children);
+                            copied = true;
+                        }
+                        vec[i] = replace(vec[i], oldVal, newVal);
+                    }
+                }
+                return Tree(vec);
+            case Chain(hash, pairs):
+                var stack = new Stack();
+                for (pair in pairs)
+                    stack = stack.push(new Pair(pair.key, if (pair.value == oldVal) newVal else pair.value));
+                return Chain(hash, stack);
+        }
+
+        return node;
+
+    }
+
+    public static function retrieve<K,V>(node:Null<Trie<K,V>>, h:Int, k:K, depth = 0):Null<V> {
+        if (node == null)
+            return null;
+        switch node {
+            case Value(hash, key, value):
+                if (hash == h) {
+                    if (key == k) {
+                        return value;
+                    }
+                }
+            case Tree(children):
+                var index = indexOf(h, depth);
+                return retrieve(children[index], h, k, depth+1);
+            case Chain(hash, pairs):
+                for (pair in pairs)
+                    if (pair.key == k)
+                        return pair.value;
+        }
+        return null;
+    }
+
+    public static function contains<K,V>(node:Null<Trie<K,V>>, v:V):Bool {
+        if (node == null)
+            return false;
+        switch node {
+            case Value(hash, key, value):
+                return value == v;
+            case Tree(children):
+                for (i in 0...32) {
+                    if (children[i] != null) {
+                        if (contains(children[i], v))
+                            return true;
+                    }
+                }
+            case Chain(hash, pairs):
+                for (pair in pairs)
+                    if (pair.value == v)
+                        return true;
+        }
+        return false;
+    }
+
+    public static function has<K,V>(node:Null<Trie<K,V>>, h:Int, k:K, depth = 0):Bool {
+        if(node == null)
+            return false;
+        switch node {
+            case Value(hash, key, value):
+                if (hash == h) {
+                    if (key == k) {
+                        return true;
+                    }
+                }
+            case Tree(children):
+                var index = indexOf(h, depth);
+                return has(children[index], h, k, depth+1);
+            case Chain(hash, pairs):
+                for (pair in pairs)
+                    if (pair.key == k)
+                        return true;
+        }
+
+        return false;
+    }
+
+    public static function delete<K,V>(node:Null<Trie<K,V>>, h:Int, k:K, depth = 0):Null<Trie<K,V>> {
+        if (node == null)
+            return null;
+        switch node {
+            case Value(hash, key, value):
+                if (hash == h) {
+                    if (key == k) {
+                        return null;
+                    }
+                }
+            case Tree(children):
+                var index = indexOf(h, depth);
+                if (has(children[index], h, k, depth)) {
+                    var vec = copy(children);
+                    vec[index] = delete(children[index], h, k, depth+1);
+                    // collapse the tree
+                    var i = 0, c = 0;
+                    for (j in 0...32) {
+                        if (vec[j] != null) {
+                            i = j;
+                            ++c;
+                        }
+                    }
+                    if (c == 0)
+                        return null;
+                    else if (c == 1)
+                        return vec[i];
+                    else
+                        return Tree(vec);
+
+                }
+            case Chain(hash, pairs):
+                var stack = new Stack();
+                for (pair in pairs)
+                    if (pair.key != k)
+                        stack = stack.push(pair);
+                if (stack.empty())
+                    return null;
+                else
+                    return Chain(hash, pairs);
+        }
+        return node;
+    }
+
+    public static function filter<K,V>(node:Null<Trie<K,V>>, predicate:(K,V)->Bool, depth = 0):Null<Trie<K,V>> {
+        if (node == null)
+            return null;
+        switch node {
+            case Value(hash, key, value):
+                if (!predicate(key, value))
+                    return null;
+            case Tree(children):
+                var vec = new Vector(32);
+                for (i in 0...32)
+                    vec[i] = filter(children[i], predicate);
+                // collapse the tree
+                var i = 0, c = 0;
+                for (j in 0...32) {
+                    if (vec[j] != null) {
+                        i = j;
+                        ++c;
+                    }
+                }
+                if (c == 0)
+                    return null;
+                else if (c == 1)
+                    return vec[i];
+                else
+                    return Tree(vec);
+            case Chain(hash, pairs):
+                var stack = new Stack();
+                for (pair in pairs)
+                    if (predicate(pair.key, pair.value))
+                        stack = stack.push(pair);
+                if (stack.empty())
+                    return null;
+                else if (stack.next.empty())
+                    return Value(hash, stack.value.key, stack.value.value);
+                else
+                    return Chain(hash, stack);
+        }
+        return node;
+    }
+
+    public static function count<K,V>(node:Null<Trie<K,V>>):Int {
+        if (node == null)
+            return 0;
+        switch node {
+            case Value(hash, key, value):
+                return 1;
+            case Tree(children):
+                var c = 0;
+                for (i in 0...32)
+                    c += count(children[i]);
+                return c;
+            case Chain(hash, pairs):
+                var c = 0;
+                for (pair in pairs)
+                    ++c;
+                return c;
+        }
+    }
+
+    public static function iterator<K,V>(node:Null<Trie<K,V>>):Iterator<V>
+        return keyValueIterator(node).seq().map(pair -> pair.value).iterator();
+
+    public static function keyValueIterator<K,V>(node:Null<Trie<K,V>>):KeyValueIterator<K,V> {
+        
+        var hn, n;
+
+        if (node == null) {
+            hn = () -> false;
+            n = () -> null;
+        } else switch node {
+            case Value(hash, key, value):
+                var valid = true;
+                hn = () -> valid;
+                n = () -> {
+                    valid = false;
+                    {key: key, value: value};
+                }
+            case Tree(children):
+                var index = 0;
+                var nextIt:KeyValueIterator<K,V> = null;
+                var valid = false;
+                function gv() {
+                    if (!valid) {
+                        while (nextIt == null || !nextIt.hasNext()) {
+                            if (index == 32)
+                                return;
+                            nextIt = keyValueIterator(children[index++]);
+                        }
+                        valid = true;
+                    }
+                }
+                hn = () -> {
+                    gv();
+                    valid;
+                }
+                n = () -> {
+                    gv();
+                    valid = false;
+                    nextIt.next();
+                }
+            case Chain(hash, pairs):
+                var stack = pairs;
+                hn = () -> !stack.empty();
+                n = () -> {
+                    var val = { key: stack.value.key, value: stack.value.value };
+                    stack = stack.next;
+                    val;
+                }
+        }
+        
+        return new FunctionalIterator(hn, n);
+
+    }
 
 }

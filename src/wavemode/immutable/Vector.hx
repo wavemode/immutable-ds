@@ -326,6 +326,12 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> {
 	}
 
 	/**
+		Returns true if the given value is in this Vector.
+	**/
+	public inline function contains(value:T):Bool
+		return find(value) != -1;
+
+	/**
 		Alias of `find()`. Returns the first index of the given `value`, or -1 if it does
 		not exist in the Vector.
 

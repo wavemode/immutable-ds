@@ -92,8 +92,10 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		Returns a new OrderedMap containing the new (key, value) pair. If an equivalent
 		key already exists in this OrderedMap, it will be replaced.
 	**/
-	public function set(key:K, newValue:V):OrderedMap<K, V>
-		return new OrderedMapObject(_data.set(key, newValue), _keys.push(key));
+	public function set(key:K, newValue:V):OrderedMap<K, V> {
+		var k = if (!_keys.contains(key)) _keys.push(key) else _keys;
+		return new OrderedMapObject(_data.set(key, newValue), k);
+	}
 
 	/**
 		Returns a new OrderedMap containing the all the values in `keys` set to all values
@@ -103,8 +105,16 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		This is equivalent to calling `set()` for each pair individually, but potentially
 		more efficient.
 	**/
-	public function setEach(keys:Sequence<K>, values:Sequence<V>):OrderedMap<K, V>
-		return new OrderedMapObject(_data.setEach(keys, values), _keys.pushEach(keys));
+	public function setEach(keys:Sequence<K>, values:Sequence<V>):OrderedMap<K, V> {
+		var keyIter = keys.iterator(),
+			valIter = values.iterator(),
+			result = this;
+
+		while (valIter.hasNext() && keyIter.hasNext())
+			result = result.set(keyIter.next(), valIter.next());
+		
+		return result;
+	}
 
 	/**
 		Returns a new OrderedMap having updated the value at this key with the return value
