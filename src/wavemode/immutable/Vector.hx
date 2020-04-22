@@ -109,7 +109,7 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	/**
 		Returns a new Vector with one element removed from the end.
 	**/
-	public inline function pop():Vector<T> {
+	public function pop():Vector<T> {
 		var result = new VectorObject();
 		result.data = this.data.pop();
 		return result;
@@ -210,7 +210,10 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		If `index` is out of bounds, this function returns the unaltered list.
 	**/
 	public function update(index:Int, updater:T->T):Vector<T>
-		return set(index, updater(get(index)));
+		if (has(index))
+			return set(index, updater(get(index)));
+		else
+			return this;
 
 	/**
 		Returns a new Vector having updated the values at these indices with the return value
@@ -235,7 +238,7 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	**/
 	public function replace(oldVal:T, newVal:T):Vector<T> {
 		var result = self;
-		for (i => v in this.data)
+		for (i => v in this)
 			if (v == oldVal)
 				result = result.set(i, newVal);
 		return result;
@@ -248,12 +251,12 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		Equivalent to calling `replace()` for each value individually, but potentially more
 		efficient, and earlier replacements do not affect later ones.
 	**/
-	public function replaceEach(oldValues:Sequence<T>,newValues:Sequence<T>):Vector<T> {
+	public function replaceEach(oldValues:Sequence<T>, newValues:Sequence<T>):Vector<T> {
 		var result = self;
-		for (i => v in this.data) {
+		for (i => v in this) {
 			var found = oldValues.find(v);
 			if (found != -1 && newValues.has(found))
-				result = result.set(found, newValues[found]);
+				result = result.set(i, newValues[found]);
 		}
 		return result;
 	}
@@ -271,13 +274,13 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	/**
 		Returns true if the index exists in this Vector.
 	**/
-	public function has(index:Int):Bool
+	public inline function has(index:Int):Bool
 		return index < length && index >= 0;
 
 	/**
 		True if the Vector is empty.
 	**/
-	public function empty():Bool
+	public inline function empty():Bool
 		return length == 0;
 
 	/**
@@ -288,9 +291,11 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	**/
 	public function find(value:T, ?start:Int):Int {
 		var i = start.or(0);
-		while (i < length)
-			if (value == get(i++))
+		while (i < length) {
+			if (value == get(i))
 				return i;
+			++i;
+		}	
 		return -1;
 	}
 
@@ -317,20 +322,22 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	**/
 	public function findWhere(predicate:T->Bool, ?start:Int):Int {
 		var i = start.or(0);
-		while (i < length)
-			if (predicate(get(i++)))
+		while (i < length) {
+			if (predicate(get(i)))
 				return i;
+			++i;
+		}	
 		return -1;
 	}
 
 	/**
-		Returns the first element of the Vector, or null if the Vector is empty.
+		Returns the first element of the Vector. Throws an Exception if the Vector is empty.
 	**/
 	public function first():T
 		return get(0);
 
 	/**
-		Returns the last element of the Vector, or null if the Vector is empty.
+		Returns the last element of the Vector. Throws an Exception if the Vector is empty.
 	**/
 	public function last():T
 		return get(length-1);
@@ -365,8 +372,8 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	/**
 		Returns a new Vector with all instances of the given `value` removed.
 	**/
-	public function remove(value:T):Vector<T>
-		return filter(x -> x == value);
+	public inline function remove(value:T):Vector<T>
+		return filter(x -> x != value);
 
 	/**
 		Returns a new Vector with the given indices removed. If an index in `indices` is out
@@ -389,7 +396,7 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		Equivalent to calling `removeV()` for each value individually, but potentially more
 		efficient.
 	**/
-	public function removeEach(values:Sequence<T>):Vector<T>
+	public inline function removeEach(values:Sequence<T>):Vector<T>
 		return filter(x -> !values.contains(x));
     
 	/**
@@ -415,8 +422,11 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 
 		For example, `[5, 4, 3, 2, 1].sort((x, y) -> x - y)` returns `[1, 2, 3, 4, 5]`
 	**/
-	public function sort(f:(T,T)->Int):Vector<T>
-		throw new Exception("not yet implemented");
+	public function sort(f:(T,T)->Int):Vector<T> {
+		var arr = toArray();
+		arr.sort(f);
+		return new Vector().pushEach(arr);
+	}
 
 	/**
 		Returns a Vector sorted ascending numerically.
@@ -454,6 +464,8 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		Returns a new Vector with the given `separator` interposed between each element.
 	**/
 	public function separate(separator:T):Vector<T> {
+		if (empty())
+			return this;
 		var result = new Vector(), i = 0;
 		while (i < length-1)
 			result = result.push(get(i++)).push(separator);
@@ -533,19 +545,8 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 
 		If `pos` or `end` are negative, their value is calculated from the end of the Vector.
 	**/
-	public function slice(pos:Int, ?end:Int):Vector<T> {
-		var result = new Vector();
-		if (length == 0)
-			return result;
-		while (pos < 0)
-			pos += length;
-		if (end != null)
-			while (end < 0)
-				end += length;
-		for (i in pos...end.or(length))
-			result = result.push(get(i));
-		return result;
-	}
+	public function slice(pos:Int, ?end:Int):Vector<T>
+		return toSequence().slice(pos, end).toVector();
 
 	/**
 		Returns `len` elements (all elements if len is null) from this Vector, starting at
@@ -553,16 +554,8 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 
 		If `pos` is negative, its value is calculated from the end of the Sequence.
 	**/
-	public function splice(pos:Int, ?len:Int):Vector<T> {
-		var result = new Vector();
-		if (length == 0)
-			return result;
-		while (pos < 0)
-			pos += length;
-		for (i in pos...(pos+len.or(length)))
-			result = result.push(get(i));
-		return result;
-	}
+	public function splice(pos:Int, ?len:Int):Vector<T>
+		return toSequence().splice(pos, len).toVector();
 
 	/**
 		Returns `num` elements from the start of the Vector.
@@ -659,23 +652,15 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	/**
 		Returns a new Vector with each value passed through the `mapper` function.
 	**/
-	public function map<M>(mapper:T->M):Vector<M> {
-		var result = new Vector();
-		for (v in this)
-			result = result.push(mapper(v));
-		return result;
-	}
+	public function map<M>(mapper:T->M):Vector<M>
+		return toSequence().map(mapper).toVector();
 
 	/**
 		Returns a new Vector with each index and corresponding value passed through the `mapper`
 		function.
 	**/
-	public function mapIndex<M>(mapper:(Int, T)->M):Vector<M> {
-		var result = new Vector();
-		for (i => v in this)
-			result = result.push(mapper(i, v));
-		return result;
-	}
+	public function mapIndex<M>(mapper:(Int, T)->M):Vector<M>
+		return toSequence().mapIndex(mapper).toVector();
 
 	/**
 		`mapper` is a function that returns an Iterable type (Array, Vector,
@@ -687,15 +672,8 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		For example, `[1, 2, 3].flatMap(x -> [x*2, x*10])` returns
 		`[2, 10, 4, 20, 6, 30]`
 	**/
-	public function flatMap<M>(mapper:T->Sequence<M>):Vector<M> {
-		var arr = [];
-		for (v in this)
-			arr.push(mapper(v));
-		var result = new VectorObject();
-		for (seq in arr)
-			result.data = result.data.pushEach(seq.iterator());
-		return result;
-	}
+	public function flatMap<M>(mapper:T->Iterable<M>):Vector<M>
+		return toSequence().flatMap(mapper).toVector();
 
 	/**
 		Returns a Vector of Vectors, with elements grouped according to the return value
@@ -737,8 +715,19 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		For example, `[1, 2, 3].zipEach([[4, 5, 6], [7, 8, 9]])` returns 
 		`[[1, 4, 7], [2, 5, 8], [3, 6, 9]]`
 	**/
-	public function zipEach(others:Sequence<Sequence<T>>):Vector<Vector<T>>
-		throw new Exception("not yet implemented");
+	public function zipEach(others:Sequence<Sequence<T>>):Vector<Vector<T>> {
+		var result = [], its = others.unshift(self).toArray().map(seq -> seq.iterator());
+		while (true) {
+			var row = [];
+			for (it in its)
+				if (it.hasNext())
+					row.push(it.next());
+				else
+					return fromArray(result);
+			result.push(fromArray(row));
+		}
+		return fromArray(result);
+	}
 
 	/**
 		Returns the accumulation of this Vector according to `foldFn`, beginning with
@@ -746,8 +735,12 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 
 		For example, `[1, 2, 3].fold((a, b) -> a - b, 0)` evaluates `0 - 1 - 2 - 3 = -6`
 	**/
-	public function fold<R>(foldFn:(R,T)->R, initialValue:R):R
-		throw new Exception("not yet implemented");
+	public function fold<R>(foldFn:(R,T)->R, initialValue:R):R {
+		var index = 0;
+		while (index < length)
+			initialValue = foldFn(initialValue, get(index++));
+		return initialValue;
+	}
 
 	/**
 		Returns the accumulation of this Vector according to `foldFn`, beginning with
@@ -755,8 +748,12 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 
 		For example, `[1, 2, 3].foldRight((a, b) -> a - b, 0)` evaluates `0 - 3 - 2 - 1 = -6`
 	**/
-	public function foldRight<R>(foldFn:(R,T)->R, initialValue:R):R
-		throw new Exception("not yet implemented");
+	public function foldRight<R>(foldFn:(R,T)->R, initialValue:R):R {
+		var index = length;
+		while (index > 0)
+			initialValue = foldFn(initialValue, get(--index));
+		return initialValue;
+	}
 
 	/**
 		A simpler form of `fold()`
@@ -767,8 +764,15 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 
 		Throws an Exception if the Vector is empty.
 	**/
-	public function reduce(reducer:(T,T)->T):T
-		throw new Exception("not yet implemented");
+	public function reduce(reducer:(T,T)->T):T {
+		if (empty())
+			throw new Exception("attempt to reduce an empty Vector");
+	
+		var initialValue = get(0), index = 1;
+		while (index < length)
+			initialValue = reducer(initialValue, get(index++));
+		return initialValue;
+	}
 
 	/**
 		A simpler form of `foldRight()`
@@ -780,8 +784,15 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 
 		Throws an Exception if the Vector is empty.
 	**/
-	public function reduceRight(reducer:(T,T)->T):T
-		throw new Exception("not yet implemented");
+	public function reduceRight(reducer:(T,T)->T):T {
+		if (empty())
+			throw new Exception("attempt to reduce an empty Vector");
+
+		var initialValue = get(length-1), index = length-1;
+		while (index > 0)
+			initialValue = reducer(initialValue, get(--index));
+		return initialValue;
+	}
 
 	/**
 		The number of elements in the Vector. Read-only property.
@@ -798,54 +809,70 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		True if `predicate` is true for every element in the Vector.
 		True if the Vector is empty.
 	**/
-	public function every(predicate:T->Bool):Bool
-		throw new Exception("not yet implemented");
+	public function every(predicate:T->Bool):Bool {
+		for (v in this)
+			if (!predicate(v))
+				return false;
+		return true;
+	}
 
 	/**
 		True if `predicate` is true for any element in the Vector.
 	**/
-	public function some(predicate:T->Bool):Bool
-		throw new Exception("not yet implemented");
+	public function some(predicate:T->Bool):Bool {
+		for (v in this)
+			if (predicate(v))
+				return true;
+		return false;
+	}
+
 
 	/**
 		Returns true if this Vector and `other` contain an identical sequence of values.
-
-		If `deep` is true, the objects are compared by their string representations,
-		which will properly handle deeply nested vectors and many other edge cases,
-		but will incorrectly classify non-printable objects like functions.
 	**/
-	public function equals(other:Sequence<T>, ?deep:Bool):Bool
-		throw new Exception("not yet implemented");
+	public function equals(other:Sequence<T>):Bool {
+		var index:Int = 0;
+		var it:Iterator<T> = other.iterator();
+
+		while (has(index) && it.hasNext()) {
+			if (get(index) != it.next())
+				return false;
+			++index;
+		}
+
+		return index == length && !it.hasNext();
+	}
 
 	/**
 		Returns the numerical maximum of the Vector.
 	**/
 	public macro function max<T>(ethis:ExprOf<Vector<T>>):ExprOf<T>
-		throw new Exception("not yet implemented");
+		return macro $e{ethis}.reduce((a, b) -> if (a > b) a else b);
 
 	/**
 		Returns the numerical minimum of the Vector.
 	**/
 	public macro function min<T>(ethis:ExprOf<Vector<T>>):ExprOf<T>
-		throw new Exception("not yet implemented");
+		return macro $e{ethis}.reduce((a, b) -> if (a < b) a else b);
 
 	/**
 		Returns the sum of the elements in the Vector.
 	**/
 	public macro function sum<T>(ethis:ExprOf<Vector<T>>):ExprOf<T>
-		throw new Exception("not yet implemented");
+		return macro $e{ethis}.reduce((a, b) -> a + b);
 
 	/**
 		Returns the product of the elements in the Vector.
 	**/
 	public macro function product<T>(ethis:ExprOf<Vector<T>>):ExprOf<T>
-		throw new Exception("not yet implemented");
+		return macro $e{ethis}.reduce((a, b) -> a * b);
 
 	/**
 		The `sideEffect` is executed for every value in the Vector.
 	**/
 	public function forEach(sideEffect:T->Void):Void
-		throw new Exception("not yet implemented");
+		for (v in this)
+			sideEffect(v);
 
 	/**
 		The `sideEffect` is executed for every value in the Vector. Iteration stops once
@@ -853,8 +880,15 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 
 		This function returns the number of times `sideEffects` was executed.
 	**/
-	public function forWhile(sideEffect:T->Bool):Int
-		throw new Exception("not yet implemented");
+	public function forWhile(sideEffect:T->Bool):Int {
+		var i = 0;
+		for (v in this) {
+			++i;
+			if (!sideEffect(v))
+				break;
+		}
+		return i;
+	}
 
 	/**
 		Iterator over each value in the Vector.
@@ -866,61 +900,69 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		Iterator over each index-value pair in the Vector.
 	**/
 	public function keyValueIterator():KeyValueIterator<Int, T>
-		throw new Exception("not yet implemented");
+		return this.data.keyValueIterator();
 
 	/**
 		Iterator over each index of the list.
 	**/
-	public inline function indices():Iterator<Int>
-		throw new Exception("not yet implemented");
+	public inline function indices():Sequence<Int>
+		return 0...length;
 
 	/**
 		Iterator over each value in the Vector. Equivalent to `iterator()`
 	**/
-	public inline function values():Iterator<T>
-		throw new Exception("not yet implemented");
+	public inline function values():Sequence<T>
+		return iterator();
 
 	/**
 		Iterator over each index-value pair in the list.
 	**/
-	public function entries():Iterator<{key: Int, value: T}>
-		throw new Exception("not yet implemented");
+	public inline function entries():Iterator<{key: Int, value: T}>
+		return keyValueIterator();
 
 	/**
 		Convert this Vector into an Array<T>
 	**/
-	public function toArray():Array<T>
-		throw new Exception("not yet implemented");
+	public inline function toArray():Array<T>
+		return [for (v in this) v];
 
 	/**
 		Convert this Vector into an immutable Map<Int,T>
 	**/
-	public function toMap():Map<Int, T>
-		throw new Exception("not yet implemented");
+	public function toMap():Map<Int, T> {
+		var result = new Map();
+		for (i => v in this)
+			result = result.set(i, v);
+		return result;
+	}
 
 	/**
 		Convert this Vector into an immutable OrderedMap<Int,T>
 	**/
-	public function toOrderedMap():OrderedMap<Int, T>
-		throw new Exception("not yet implemented");
+	public function toOrderedMap():OrderedMap<Int, T> {
+		var result = new OrderedMap();
+		for (i => v in this)
+			result = result.set(i, v);
+		return result;
+	}
 
 	/**
 		Convert this Vector into an immutable Set, discarding duplicate values
 	**/
-	public function toSet():Set<T>
-		throw new Exception("not yet implemented");
+	public inline function toSet():Set<T>
+		return new Set().addEach(values());
 
 	/**
 		Convert this Vector into an OrderedSet<T>
 	**/
-	public function toOrderedSet():OrderedSet<T>
-		throw new Exception("not yet implemented");
+	public inline function toOrderedSet():OrderedSet<T>
+		return new OrderedSet().addEach(values());
 
 	/**
 		Convert this Vector into a Sequence<T>
 	**/
-	public function toSequence():Sequence<T>
-		throw new Exception("not yet implemented");
+	public inline function toSequence():Sequence<T>
+		return values();
 
 	/**
 		Convert this Vector to its String representation.

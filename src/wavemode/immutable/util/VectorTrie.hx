@@ -125,34 +125,35 @@ class VectorTrieTools<T> {
         if (!vs.hasNext())
             return node;        
 
-        if (node.length == node.maxLen) {
-            var result = new VectorTrie(null, new Vector(32));
-            result.tree[0] = node;
-            result.maxLen = node.maxLen * 32;
-            result.height = node.height + 1;
-            result.length = node.length;
-            return result.pushEach(vs);
-        }
-
-        var result = node.clone();
+        var node = node.clone();
 
         while (vs.hasNext()) {
-            var n = result, h = n.height;
+
+            if (node.length == node.maxLen) {
+                var result = new VectorTrie(null, new Vector(32));
+                result.tree[0] = node;
+                result.maxLen = node.maxLen * 32;
+                result.height = node.height + 1;
+                result.length = node.length;
+                return result.pushEach(vs);
+            }
+
+            var n = node, h = n.height;
             while (h > 0) {
-                var index = indexOf(result.length, h--);
+                var index = indexOf(node.length, h--);
                 if (n.tree[index] == null)
                     n.tree[index] = new VectorTrie(null, new Vector(32));
                 else
                     n.tree[index] = n.tree[index].clone();
                 n = n.tree[index];
             }
-            var index = indexOf(result.length, 0);
+            var index = indexOf(node.length, 0);
             while (index < 32 && vs.hasNext()) {
                 n.tree[index++] = new VectorTrie(vs.next());
-                result.length = result.length + 1;
+                node.length = node.length + 1;
             }
         }
-        return result;
+        return node;
     }
 
     public static function set<T>(node:Null<VectorTrie<T>>, i:Int, v:T):Null<VectorTrie<T>> {
@@ -199,7 +200,7 @@ class VectorTrieTools<T> {
     public static function keyValueIterator<T>(node:Null<VectorTrie<T>>):KeyValueIterator<Int,T> {
         var index = 0;
         function hn()
-            return index < node.length;
+                return node != null && index < node.length;
         function n() {
             var val = {key: index, value: node.retrieve(index)};
             ++index;

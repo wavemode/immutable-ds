@@ -20,8 +20,8 @@ class Benchmark {
         for (i in 0...NUM_TRIALS) {
             Sys.print('(trial ${i+1}) ');
             bench("Vector.get (100K elements)", 
-                var vec = new Vector().pushEach(Sequence.step().take(100000)),
-                vec.get(__i__%100000));
+                var vec = new Vector().pushEach(Sequence.step().take(1000000)),
+                vec.get(__i__%1000000));
         }
         for (i in 0...NUM_TRIALS) {
             Sys.print('(trial ${i+1}) ');
@@ -32,7 +32,7 @@ class Benchmark {
         for (i in 0...NUM_TRIALS) {
             Sys.print('(trial ${i+1}) ');
             bench("Vector.push (100K elements)", 
-                var vec = new Vector().pushEach(Sequence.step().take(100000)),
+                var vec = new Vector().pushEach(Sequence.step().take(1000000)),
                 vec.push(__i__));
         }
         for (i in 0...NUM_TRIALS) {
