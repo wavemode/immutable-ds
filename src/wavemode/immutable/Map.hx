@@ -555,6 +555,8 @@ private class MapObject<K, V> implements MapType<K, V> {
 	private static function dynamicHash(val:Dynamic):Int {
 		if (val.hashCode != null)
 			return val.hashCode();
+		else if (val.toString != null)
+			return stringHash(val.toString())
 		else
 			return stringHash(Std.string(val));
 	}

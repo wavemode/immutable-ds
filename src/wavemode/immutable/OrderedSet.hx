@@ -334,7 +334,7 @@ private class OrderedSetObject<T> {
 		return data.keys().iterator();
 
 	/**
-		An iterator of this OrderedSet's keys. Equivalent to `iterator()`.
+		A sequence of this OrderedSet's values.
 	**/
 	public inline function values():Sequence<T>
 		return data.keys();

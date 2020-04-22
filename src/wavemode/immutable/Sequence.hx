@@ -39,7 +39,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         Create a new Sequence from an immutable Vector.
     **/
     @:from public static inline function fromVector<T>(vec:Vector<T>):Sequence<T>
-        return fromIdx(0, vec.has, vec.getValue, vec.length, true);
+        return fromIdx(0, vec.has, vec.get, vec.length, true);
 
     /**
         Create a new Sequence from an Iterable.

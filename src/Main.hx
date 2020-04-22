@@ -1,11 +1,18 @@
 
-import wavemode.immutable.Map;
+import wavemode.immutable.Vector;
 
 class Main {
     static function main() {
-        var m = new Map().setEach([1, 2, 3], [4, 5, 6]);
-        for (k => v in m) {
-            trace(k + v);
-        }
+        var vec = Vector.make(1, 2, 3, 4, 5, 6);
+        Sys.print("[ ");
+        for (i in vec)
+            Sys.print('$i ');
+        Sys.println("]");
+        vec = vec.insertEach(2, [99, 100, 101]).reverse().flatMap(x -> [1, 2, 3]);
+        Sys.print("[ ");
+        for (i in vec)
+            Sys.print('$i ');
+        Sys.println("]");
     }
 }
+
