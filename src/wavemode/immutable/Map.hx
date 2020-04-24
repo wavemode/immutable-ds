@@ -97,7 +97,7 @@ abstract Map<K, V>(MapObject<K, V>) from MapObject<K, V> to MapObject<K, V> {
 
 }
 
-private class MapObject<K, V> implements MapType<K, V> {
+class MapObject<K, V> implements MapType<K, V> {
 
 	/**
 		Returns a new Map containing the new (key, value) pair. If an equivalent key already
@@ -175,7 +175,11 @@ private class MapObject<K, V> implements MapType<K, V> {
 	**/
 	public function replace(value:V, newVal:V):Map<K, V> {
 		var map = new MapObject(hash);
-		map.data = data.replace(value, newVal);
+		for (k => v in this)
+			if (v == value)
+				map = map.set(k, newVal);
+			else
+				map = map.set(k, v);
 		return map;
 	}
 
@@ -250,7 +254,9 @@ private class MapObject<K, V> implements MapType<K, V> {
 	**/
 	public function filter(predicate:(K, V) -> Bool):Map<K, V> {
 		var map = new MapObject(hash);
-		map.data = data.filter(predicate);
+		for (k => v in this)
+			if (predicate(k, v))
+				map = map.set(k, v);
 		return map;
 	}
 
@@ -562,30 +568,18 @@ private class MapObject<K, V> implements MapType<K, V> {
 	}
 
 	private static function stringHash(str:String):Int {
-		/*
-			credit: Dark Sky
-			https://github.com/darkskyapp/string-hash
-		*/
 		var hash = 5381,
 			i    = str.length;
-
 		while(i > 0)
 			@:nullSafety(Off) hash = (hash * 33) ^ str.charCodeAt(--i);
-
 		return hash;
 	}
 
-	private static function intHash(num:Int):Int {
-		/*
-			credit: Thomas Wang
-			http://burtleburtle.net/bob/hash/integer.html
-		*/
-		num = (num ^ 61) ^ (num >> 16);
-		num = num + (num << 3);
-		num = num ^ (num >> 4);
-		num = num * 0x27d4eb2d;
-		num = num ^ (num >> 15);
-		return num;
+	private static function intHash(x:Int):Int {
+		x = ((x >>> 16) ^ x) * 0x45d9f3b;
+		x = ((x >>> 16) ^ x) * 0x45d9f3b;
+		x = (x >>> 16) ^ x;
+		return x;
 	}
 
 }

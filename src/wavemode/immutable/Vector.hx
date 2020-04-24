@@ -19,6 +19,8 @@ import haxe.macro.Context;
 
 import stdlib.Exception;
 import wavemode.immutable.util.VectorTrie;
+import haxe.ds.Vector as HxVector;
+import wavemode.immutable.util.FunctionalIterator;
 using wavemode.immutable.Functional;
 
 abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
@@ -90,7 +92,22 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	**/
 	public function push(value:T):Vector<T> {
 		var result = new VectorObject();
-		result.data = this.data.push(value);
+		if (this.tail == null) {
+			result.tail = new HxVector(32);
+			result.tail.unsafe()[0] = value;
+			result.tailLength = 1;
+			result.data = this.data;
+		} else if (this.tailLength == 32) {
+			result.data = this.data.pushVector(this.tail.unsafe());
+			result.tail = new HxVector(32);
+			result.tail.unsafe()[0] = value;
+			result.tailLength = 1;
+		} else {
+			result.tail = this.tail;
+			result.tailLength = this.tailLength;
+			result.tail.unsafe()[result.tailLength++] = value;
+			result.data = this.data;
+		}
 		return result;
 	}
 
@@ -102,7 +119,17 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	**/
 	public function pushEach(values:Sequence<T>):Vector<T> {
 		var result = new VectorObject();
-		result.data = this.data.pushEach(values.iterator());
+		result.tail = this.tail.or(new HxVector(32));
+		result.tailLength = this.tailLength;
+		result.data = this.data;
+		for (v in values) {
+			if (result.tailLength == 32) {
+				result.data = result.data.pushVector(result.tail.unsafe());
+				result.tail = new HxVector(32);
+				result.tailLength = 0;
+			}
+			result.tail.unsafe()[result.tailLength++] = v;
+		}
 		return result;
 	}
 
@@ -111,7 +138,13 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	**/
 	public function pop():Vector<T> {
 		var result = new VectorObject();
-		result.data = this.data.pop();
+		if (this.tailLength == 0) {
+			result.data = this.data.pop();
+		} else {
+			result.data = this.data;
+			result.tail = this.tail;
+			result.tailLength = this.tailLength - 1;
+		}
 		return result;
 	}
 
@@ -133,19 +166,11 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 
 		If `index` is out of bounds, this function returns the unaltered Vector.
 	**/
-	public function insert(index:Int, value:T):Vector<T> {
+	public function insert(index:Int, value:T):Vector<T>
 		if (index < 0 || index > length)
 			return this;
-		else if (index == length)
-			return push(value);
-		var result = self;
-		result = result.push(result.last());
-		for (i in (result.length-1).above(index))
-			result = result.set(i, result.get(i-1));
-		result = result.set(index, value);
-		return result;
-	}
-
+		else
+			return toSequence().insert(index, value).toVector();
 
 	/**
 		Insert the given `values` at the specified `index`, pushing back every subsequent
@@ -154,21 +179,11 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		Equivalent to calling `insert()` for each value individually, but potentially more
 		efficient.
 	**/
-	public function insertEach(index:Int, values:Sequence<T>):Vector<T> {
+	public function insertEach(index:Int, values:Sequence<T>):Vector<T>
 		if (index < 0 || index > length)
 			return this;
-		else if (index == length)
-			return pushEach(values);
-		var result = new VectorObject();
-		result.data = this.data.pushEach(values.iterator());
-		var len = result.data.unsafe().length-this.data.unsafe().length;
-		var result:Vector<T> = result;
-		for (i in (result.length-1).downto(index+len))
-			result = result.set(i, result.get(i-len));
-		for (i in 0...len)
-			result = result.set(index+i, values[i]);
-		return result;
-	}
+		else
+			return toSequence().insertEach(index, values).toVector();
 
 	/**
 		Returns a new Vector with the given index replaced with the given `value`. 
@@ -179,7 +194,14 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		if (index < 0 || index >= length)
 			return this;
 		var result = new VectorObject();
-		result.data = this.data.set(index, value);
+		result.tailLength = this.tailLength;
+		if (index < dataLen) {
+			result.data = this.data.set(index, value);
+		} else {
+			result.data = this.data;
+			result.tail = copy(this.tail.unsafe());
+			result.tail.unsafe()[index-dataLen] = value;
+		}
 		return result;
 	}
 
@@ -268,8 +290,10 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	public inline function get(index:Int):T
 		if (index < 0 || index >= length)
 			throw new Exception('index $index out of bounds for Vector')
-		else
+		else if (index < dataLen)
 			@:nullSafety(Off) return cast this.data.retrieve(index);
+		else
+			@:nullSafety(Off) return this.tail[index-dataLen];
 
 	/**
 		Returns true if the index exists in this Vector.
@@ -361,11 +385,10 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	public function delete(index:Int):Vector<T> {
 		if (index < 0 || index >= length)
 			return this;
-		var result = new VectorObject();
-		result.data = this.data.clone();
-		for (i in index...(length-1))
-			result.data = result.data.set(i, result.data.retrieve(i+1).unsafe());
-		--result.data.unsafe().length;
+		var result = new Vector();
+		for (i => v in this)
+			if (i != index)
+				result = result.push(v);
 		return result;
 	}
 	
@@ -479,10 +502,10 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		For example, `[1, 2, 3, 4].interleave([9, 9, 9, 9])` returns `[1, 9, 2, 9, 3, 9, 4, 9]`
 	**/
 	public function interleave(other:Sequence<T>):Vector<T> {
-		var it1 = iterator(), it2 = other.iterator(), result = new VectorObject();
+		var it1 = iterator(), it2 = other.iterator(), result = new Vector();
 		while (it1.hasNext() && it2.hasNext())
-			result.data = result.data.push(it1.next()).push(it2.next());
-		result.data = result.data.pushEach(it1).pushEach(it2);
+			result = result.push(it1.next()).push(it2.next());
+		result = result.pushEach(it1).pushEach(it2);
 		return result;
 	}
 
@@ -798,12 +821,15 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 		The number of elements in the Vector. Read-only property.
 	**/
 	public var length(get, never):Int;
-	private inline function get_length():Int {
+	private inline function get_length():Int
+		return dataLen + this.tailLength;
+
+	private var dataLen(get, never):Int;
+	private inline function get_dataLen():Int
 		if (this.data == null)
 			return 0;
 		else
 			return this.data.unsafe().length;
-	}
 
 	/**
 		True if `predicate` is true for every element in the Vector.
@@ -893,14 +919,30 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	/**
 		Iterator over each value in the Vector.
 	**/
-	public inline function iterator():Iterator<T>
-		return this.data.iterator();
+	public function iterator():Iterator<T> {
+		var index = 0;
+		function hn()
+			return index < length;
+		function n()
+			return get(index++);
+		return new FunctionalIterator(hn, n);
+	}
+
 
 	/**
 		Iterator over each index-value pair in the Vector.
 	**/
-	public function keyValueIterator():KeyValueIterator<Int, T>
-		return this.data.keyValueIterator();
+	public function keyValueIterator():KeyValueIterator<Int,T> {
+		var index = 0;
+		function hn()
+			return index < length;
+		function n() {
+			var result = { key: index, value: get(index) };
+			++index;
+			return result;
+		}
+		return new FunctionalIterator(hn, n);
+	}
 
 	/**
 		Iterator over each index of the list.
@@ -986,6 +1028,13 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 			+ " ]";
 	}
 
+	private static function copy<T>(v:HxVector<T>):HxVector<T> {
+		var vec = new HxVector(32);
+		for (i in 0...32)
+			if ((vec[i] = v[i]) == null)
+				break;
+		return vec;
+	}
 
 	private var self(get, never):Vector<T>;
 	private inline function get_self() return this;
@@ -998,12 +1047,14 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 private class VectorObject<T> {
 	public inline function new() {}
 	public var data:Null<VectorTrie<T>>;
+	public var tail:Null<HxVector<T>>;
+	public var tailLength:Int = 0;
 
 	public function iterator():Iterator<T>
-		return data.iterator();
+		return (this:Vector<T>).iterator();
 
 	public function keyValueIterator():KeyValueIterator<Int, T>
-		return data.keyValueIterator();
+		return (this:Vector<T>).keyValueIterator();
 
 	public function toString():String
 		return (this:Vector<T>).toString();

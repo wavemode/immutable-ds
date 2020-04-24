@@ -4,6 +4,8 @@ import haxe.ds.Vector;
 using haxe.EnumTools.EnumValueTools;
 using wavemode.immutable.Functional;
 
+// TODO: VectorTrie.setEach / setRange
+
 @:using(wavemode.immutable.util.VectorTrie.VectorTrieTools)
 class VectorTrie<T> {
     public inline function new(?v, ?t) 
@@ -113,21 +115,16 @@ class VectorTrieTools<T> {
         return result;
     }
 
+    public static function pushVector<T>(node:Null<VectorTrie<T>>, vs:haxe.ds.Vector<T>, start = 0):Null<VectorTrie<T>> {
 
-    public static function pushEach<T>(node:Null<VectorTrie<T>>, vs:Iterator<T>):Null<VectorTrie<T>> {
-
-        if (!vs.hasNext())
-            return node;
+        var vectorIndex = start;
 
         if (node == null)
-            node = new VectorTrie(vs.next());
-
-        if (!vs.hasNext())
-            return node;        
+            node = new VectorTrie(vs[vectorIndex++]);
 
         var node = node.clone();
 
-        while (vs.hasNext()) {
+        while (vectorIndex < 32) {
 
             if (node.length == node.maxLen) {
                 var result = new VectorTrie(null, new Vector(32));
@@ -135,7 +132,7 @@ class VectorTrieTools<T> {
                 result.maxLen = node.maxLen * 32;
                 result.height = node.height + 1;
                 result.length = node.length;
-                return result.pushEach(vs);
+                return result.pushVector(vs, vectorIndex);
             }
 
             var n = node, h = n.height;
@@ -148,8 +145,8 @@ class VectorTrieTools<T> {
                 n = n.tree[index];
             }
             var index = indexOf(node.length, 0);
-            while (index < 32 && vs.hasNext()) {
-                n.tree[index++] = new VectorTrie(vs.next());
+            while (index < 32 && vectorIndex < 32) {
+                n.tree[index++] = new VectorTrie(vs[vectorIndex++]);
                 node.length = node.length + 1;
             }
         }
@@ -186,27 +183,6 @@ class VectorTrieTools<T> {
                 return null;
         }
         return n.value;
-    }
-
-    public static function iterator<T>(node:Null<VectorTrie<T>>):Iterator<T> {
-        var index = 0;
-        function hn()
-            return node != null && index < node.length;
-        function n()
-            return node.retrieve(index++);
-        return new FunctionalIterator(hn, n);
-    }
-
-    public static function keyValueIterator<T>(node:Null<VectorTrie<T>>):KeyValueIterator<Int,T> {
-        var index = 0;
-        function hn()
-                return node != null && index < node.length;
-        function n() {
-            var val = {key: index, value: node.retrieve(index)};
-            ++index;
-            return val;
-        }
-        return new FunctionalIterator(hn, n);
     }
 
 }

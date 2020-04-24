@@ -6,6 +6,7 @@ class Stack<T> {
         var result = new Stack();
         result.value = value;
         result.next = this;
+        result.empty = false;
         return result;
     }
     public inline function pop():Null<Stack<T>>
@@ -15,7 +16,7 @@ class Stack<T> {
     public function iterator() {
         var node = this;
         function hn()
-            return node != null;
+            return node != null && !node.empty;
         function n() {
             var val = node.value;
             node = node.next;
@@ -29,8 +30,7 @@ class Stack<T> {
             result = result.push(v);
         return result;
     }
-    public function empty():Bool
-        return value == null;
     public var value(default, null):Null<T>;
     public var next(default, null):Null<Stack<T>>;
+    private var empty:Bool = true;
 }
