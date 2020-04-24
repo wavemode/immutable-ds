@@ -4,10 +4,7 @@
 -D no-deprecation-warnings
 -D buddy-ignore-passing-specs
 -D no-inline
--main wavemode.immutable.test.Benchmark
---macro nullSafety("wavemode.immutable", Strict)
---macro nullSafety("wavemode.immutable.test", Off)
---macro nullSafety("wavemode.immutable.util", Off)
+-main wavemode.immutable.test.AllTests
 -lib buddy
 -lib stdlib
--cpp bin/cpp/
+--interp

@@ -66,36 +66,7 @@ class VectorTrieTools<T> {
         result.maxLen = node.maxLen;
         return result;
     }
-
-    public static function push<T>(node:Null<VectorTrie<T>>, v:T):Null<VectorTrie<T>> {
-
-        if (node == null)
-            return new VectorTrie(v);
-
-        if (node.length == node.maxLen) {
-            var result = new VectorTrie(null, new Vector(32));
-            result.tree[0] = node;
-            result.maxLen = node.maxLen * 32;
-            result.height = node.height + 1;
-            result.length = node.length;
-            return result.push(v);
-        }
-
-        var result = node.clone(), n = result, h = n.height;
-        while (h > 0) {
-            var index = indexOf(result.length, h--);
-            if (n.tree[index] == null)
-                n.tree[index] = new VectorTrie(null, new Vector(32));
-            else
-                n.tree[index] = n.tree[index].clone();
-            n = n.tree[index];
-        }
-        var index = indexOf(result.length, 0);
-        n.tree[index] = new VectorTrie(v);
-        result.length = result.length + 1;
-        return result;
-    }
-
+    
     public static function pop<T>(node:Null<VectorTrie<T>>):Null<VectorTrie<T>> {
         if (node == null)
             return null;
