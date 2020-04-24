@@ -1,0 +1,14 @@
+DarkSky hash
+260 collisions
+Bigmap set:
+Average time: 2.897388951 us per op
+Average speed: 345138.335553762 ops/sec
+Bigmap get:
+Average time: 0.699087349000001 us per op
+Average speed: 1430436.4131756 ops/sec
+Smallmap set:
+Average time: 1.16498016 us per op
+Average speed: 858383.717023987 ops/sec
+Smallmap get:
+Average time: 0.285846613 us per op
+Average speed: 3498379.74116559 ops/sec
