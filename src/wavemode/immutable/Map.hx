@@ -8,7 +8,7 @@
 
 // TODO: contains for all types
 // TODO: robust MapType
-// TODO: expand use of keyvalueiterable
+// TODO: empty out MapObject
 
 package wavemode.immutable;
 
@@ -18,9 +18,8 @@ import haxe.macro.Expr;
 #end
 
 using wavemode.immutable.Functional;
-import wavemode.immutable.util.MapType;
-import wavemode.immutable.util.Trie;
-import wavemode.immutable.util.Pair;
+import wavemode.immutable._internal.MapType;
+import wavemode.immutable._internal.Trie;
 import stdlib.Exception;
 
 @:forward

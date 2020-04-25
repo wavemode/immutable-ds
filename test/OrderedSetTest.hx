@@ -1,36 +1,36 @@
 /**
-*  Copyright (c) 2020-present, Chukwudi Okechukwu
-*
-*  This source code is licensed under the MIT license found in the
-*  LICENSE file in the root directory of this source tree.
-*
-*/
+ *  Copyright (c) 2020-present, Chukwudi Okechukwu
+ *
+ *  This source code is licensed under the MIT license found in the
+ *  LICENSE file in the root directory of this source tree.
+ *
+ */
 
-package wavemode.immutable.test;
+package;
 
 import buddy.BuddySuite;
 import haxe.ds.Option;
 using buddy.Should;
 
-using StringTools;
-using stdlib.StringTools;
+import wavemode.immutable.OrderedSet;
+import wavemode.immutable.Set;
 
-class SetTest extends BuddySuite {
+class OrderedSetTest extends BuddySuite {
 	public function new() {
 		// TODO: failure for unhashable types
 		// TODO: success for hashable types
 
 		describe("new", {
 
-			it("should create a new empty Set", {
+			it("should create a new empty OrderedSet", {
 
-				new Set().equals([]).should.be(true);
+				new OrderedSet().equals([]).should.be(true);
 
 			});
 
 			it("should make a clone of another sequence", {
 
-				new Set([1, 2, 3, 4]).equals([1, 2, 3, 4]).should.be(true);
+				new OrderedSet([1, 2, 3, 4]).equals([1, 2, 3, 4]).should.be(true);
 
 			});
 
@@ -41,30 +41,30 @@ class SetTest extends BuddySuite {
 
 			beforeEach({
 				one = [1, 1, 1, 1, 2, 3, 4, 5, 5, 5];
-				two = Set.fromSequence(one);
-				three = Set.fromSequence([]);
+				two = OrderedSet.fromSequence(one);
+				three = OrderedSet.fromSequence([]);
 			});
 
 			it("should remove duplicate values", {
-				two.equals(Set.fromSequence([1, 2, 3, 4, 5])).should.be(true);
+				two.equals(OrderedSet.fromSequence([1, 2, 3, 4, 5])).should.be(true);
 			});
 
 			it("should behave normally for an empty array", {
-				three.equals(new Set()).should.be(true);
+				three.equals(new OrderedSet()).should.be(true);
 			});
 		});
 
 		describe("make", {
 
-			it("should allow for variadic Set creation", {
+			it("should allow for variadic OrderedSet creation", {
 
-				Set.make(1, 2, 2, 3, 3, 4).equals([1, 2, 3, 4]).should.be(true);
+				OrderedSet.make(1, 2, 2, 3, 3, 4).equals([1, 2, 3, 4]).should.be(true);
 
 			});
 
 			it("should work normally for an empty input", {
 
-				Set.make().equals([]).should.be(true);
+				OrderedSet.make().equals([]).should.be(true);
 
 			});
 
@@ -75,7 +75,7 @@ class SetTest extends BuddySuite {
 			var one, two, three;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
 				two = one.add(6);
 				three = one.add(5);
 			});
@@ -97,7 +97,7 @@ class SetTest extends BuddySuite {
 			var one, two, three;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
 				two = one.addEach([6, 7]);
 				three = one.addEach([4, 5]);
 			});
@@ -119,7 +119,7 @@ class SetTest extends BuddySuite {
 			var one, two;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
 				two = one.replace(2, 8);
 			});
 
@@ -136,7 +136,7 @@ class SetTest extends BuddySuite {
 			var one, two;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
 				two = one.replaceEach([2, 3], [8, 9]);
 			});
 
@@ -153,8 +153,8 @@ class SetTest extends BuddySuite {
 			var one, two;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
-				two = Set.fromSequence([3, 7, 8, 9, 10]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
+				two = OrderedSet.fromSequence([3, 7, 8, 9, 10]);
 			});
 
 			it("should return true for existing values", {
@@ -168,11 +168,11 @@ class SetTest extends BuddySuite {
 
 		describe("empty", {
 			it("should be true when the set is empty", {
-				new Set().empty().should.be(true);
+				new OrderedSet().empty().should.be(true);
 			});
 
 			it("should be false when the set is not empty", {
-				new Set().add(1).empty().should.be(false);
+				new OrderedSet().add(1).empty().should.be(false);
 			});
 		});
 
@@ -180,7 +180,7 @@ class SetTest extends BuddySuite {
 			var one, two;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
 				two = one.filter(x -> x < 3);
 			});
 
@@ -197,7 +197,7 @@ class SetTest extends BuddySuite {
 			var one, two;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
 				two = one.remove(2);
 			});
 
@@ -214,7 +214,7 @@ class SetTest extends BuddySuite {
 			var one, two;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
 				two = one.removeEach([2, 1]);
 			});
 
@@ -232,7 +232,7 @@ class SetTest extends BuddySuite {
 			var one, two;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
 				two = one.clear();
 			});
 
@@ -249,9 +249,9 @@ class SetTest extends BuddySuite {
 			var one, two, three, four, five, six, seven;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
-				two = Set.fromSequence([6, 7, 8, 9, 10]);
-				three = Set.fromSequence([4, 5, 6, 7]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
+				two = OrderedSet.fromSequence([6, 7, 8, 9, 10]);
+				three = OrderedSet.fromSequence([4, 5, 6, 7]);
 				four = one.union(two);
 				five = one.union(three);
 				six = one + two;
@@ -279,9 +279,9 @@ class SetTest extends BuddySuite {
 			var one, two, three, four;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3]);
-				two = Set.fromSequence([6, 7, 8]);
-				three = Set.fromSequence([4, 5, 6]);
+				one = OrderedSet.fromSequence([1, 2, 3]);
+				two = OrderedSet.fromSequence([6, 7, 8]);
+				three = OrderedSet.fromSequence([4, 5, 6]);
 				four = one.unionEach([two, three]);
 			});
 
@@ -300,9 +300,9 @@ class SetTest extends BuddySuite {
 			var one, two, three, four, five;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
-				two = Set.fromSequence([6, 7, 8, 9, 10]);
-				three = Set.fromSequence([4, 5, 6, 7]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
+				two = OrderedSet.fromSequence([6, 7, 8, 9, 10]);
+				three = OrderedSet.fromSequence([4, 5, 6, 7]);
 				four = one.subtract(three);
 				five = one - three;
 			});
@@ -323,9 +323,9 @@ class SetTest extends BuddySuite {
 			var one, two, three, four;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
-				two = Set.fromSequence([3, 7, 8, 9, 10]);
-				three = Set.fromSequence([4, 5, 6, 7]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
+				two = OrderedSet.fromSequence([3, 7, 8, 9, 10]);
+				three = OrderedSet.fromSequence([4, 5, 6, 7]);
 				four = one.subtractEach([two, three]);
 			});
 
@@ -344,7 +344,7 @@ class SetTest extends BuddySuite {
 			var one, two;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
 				two = one.map(Std.string);
 			});
 
@@ -361,9 +361,9 @@ class SetTest extends BuddySuite {
 			var one, two, three, four, five;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
-				two = Set.fromSequence([6, 7, 8, 9, 10]);
-				three = Set.fromSequence([4, 5, 6, 7]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
+				two = OrderedSet.fromSequence([6, 7, 8, 9, 10]);
+				three = OrderedSet.fromSequence([4, 5, 6, 7]);
 				four = one.intersect(two);
 				five = one.intersect(three);
 			});
@@ -384,9 +384,9 @@ class SetTest extends BuddySuite {
 			var one, two, three, four, five;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
-				two = Set.fromSequence([4, 6, 7, 8, 9, 10]);
-				three = Set.fromSequence([4, 5, 6, 7]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
+				two = OrderedSet.fromSequence([4, 6, 7, 8, 9, 10]);
+				three = OrderedSet.fromSequence([4, 5, 6, 7]);
 				four = one.intersectEach([two, three]);
 				five = one.intersectEach([]);
 			});
@@ -410,13 +410,13 @@ class SetTest extends BuddySuite {
 
 			it("should accumulate the values according to foldFn", {
 
-				Set.make(4, 5, 6).fold((a, b) -> a + b, 0).should.be(15);
+				OrderedSet.make(4, 5, 6).fold((a, b) -> a + b, 0).should.be(15);
 
 			});
 
 			it("should work normally for an empty Set", {
 
-				new Set().fold((a, b) -> a + b, 10).should.be(10);
+				new OrderedSet().fold((a, b) -> a + b, 10).should.be(10);
 
 			});
 
@@ -426,13 +426,13 @@ class SetTest extends BuddySuite {
 
 			it("should accumulate the values according to foldFn", {
 
-				Set.make(4, 5, 6).reduce((a, b) -> a + b).should.be(15);
+				OrderedSet.make(4, 5, 6).reduce((a, b) -> a + b).should.be(15);
 
 			});
 
 			it("should throw an exception for an empty Set", {
 
-				(() -> new Set().reduce((a, b) -> a + b)).should.throwAnything();
+				(() -> new OrderedSet().reduce((a, b) -> a + b)).should.throwAnything();
 
 			});
 
@@ -443,7 +443,7 @@ class SetTest extends BuddySuite {
 
 			beforeEach({
 				one = [1, 2, 3, 4, 5];
-				two = Set.fromSequence(one);
+				two = OrderedSet.fromSequence(one);
 			});
 
 			it("should contain the number of elements in the set", {
@@ -455,19 +455,19 @@ class SetTest extends BuddySuite {
 
 			it("should return true if the predicate is true for all values", {
 
-				Set.make(2, 4, 6).every(x -> x % 2 == 0).should.be(true);
+				OrderedSet.make(2, 4, 6).every(x -> x % 2 == 0).should.be(true);
 
 			});
 
 			it("should return false if the predicate is false for any value", {
 
-				Set.make(2, 4, 7).every(x -> x % 2 == 0).should.be(false);
+				OrderedSet.make(2, 4, 7).every(x -> x % 2 == 0).should.be(false);
 
 			});
 
 			it("should return true for an empty Set", {
 
-				new Set().every(x -> x % 2 == 0).should.be(true);
+				new OrderedSet().every(x -> x % 2 == 0).should.be(true);
 
 			});
 
@@ -477,19 +477,19 @@ class SetTest extends BuddySuite {
 
 			it("should return true if the predicate is true for any value", {
 
-				Set.make(3, 3, 6).some(x -> x % 2 == 0).should.be(true);
+				OrderedSet.make(3, 3, 6).some(x -> x % 2 == 0).should.be(true);
 
 			});
 
 			it("should return false if the predicate is false for all values", {
 
-				Set.make(3, 5, 7).some(x -> x % 2 == 0).should.be(false);
+				OrderedSet.make(3, 5, 7).some(x -> x % 2 == 0).should.be(false);
 
 			});
 
 			it("should return false for an empty Set", {
 
-				new Set().some(x -> x % 2 == 0).should.be(false);
+				new OrderedSet().some(x -> x % 2 == 0).should.be(false);
 
 			});
 
@@ -499,18 +499,18 @@ class SetTest extends BuddySuite {
 			var one, two, three, four;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
-				two = Set.fromSequence([3, 7, 8, 9, 10]);
-				three = Set.fromSequence([4, 5, 6, 7]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
+				two = OrderedSet.fromSequence([3, 7, 8, 9, 10]);
+				three = OrderedSet.fromSequence([4, 5, 6, 7]);
 			});
 
 			it("should work for comparing ordered sets", {
-				one.equals(Set.fromSequence([1, 2, 3, 4, 5])).should.be(true);
-				two.equals(Set.fromSequence([3, 7, 8, 9, 10])).should.be(true);
-				three.equals(Set.fromSequence([4, 5, 6, 7])).should.be(true);
-				one.equals(Set.fromSequence([1, 2])).should.be(false);
-				two.equals(Set.fromSequence([3, 7])).should.be(false);
-				three.equals(Set.fromSequence([4, 5])).should.be(false);
+				one.equals(OrderedSet.fromSequence([1, 2, 3, 4, 5])).should.be(true);
+				two.equals(OrderedSet.fromSequence([3, 7, 8, 9, 10])).should.be(true);
+				three.equals(OrderedSet.fromSequence([4, 5, 6, 7])).should.be(true);
+				one.equals(OrderedSet.fromSequence([1, 2])).should.be(false);
+				two.equals(OrderedSet.fromSequence([3, 7])).should.be(false);
+				three.equals(OrderedSet.fromSequence([4, 5])).should.be(false);
 			});
 
 			it("should work for comparing unordered sets", {
@@ -545,20 +545,20 @@ class SetTest extends BuddySuite {
 
 			it("should return true if every value in other is in this Set", {
 
-				Set.make(1, 2, 3, 4).supersetOf([3, 2, 1]).should.be(true);
+				OrderedSet.make(1, 2, 3, 4).supersetOf([3, 2, 1]).should.be(true);
 
 			});
 
 			it("should return false if any value in other is not in this Set", {
 
-				Set.make(1, 2, 3, 4).supersetOf([3, 2, 1, 0]).should.be(false);
+				OrderedSet.make(1, 2, 3, 4).supersetOf([3, 2, 1, 0]).should.be(false);
 
 			});
 
 			it("should work normally for an empty Set", {
 
-				Set.make().supersetOf([]).should.be(true);
-				Set.make().supersetOf([1]).should.be(false);
+				OrderedSet.make().supersetOf([]).should.be(true);
+				OrderedSet.make().supersetOf([1]).should.be(false);
 
 			});
 
@@ -568,20 +568,20 @@ class SetTest extends BuddySuite {
 
 			it("should return true if every value in this Set is in other", {
 
-				Set.make(1, 2, 3).subsetOf([4, 3, 2, 1]).should.be(true);
+				OrderedSet.make(1, 2, 3).subsetOf([4, 3, 2, 1]).should.be(true);
 
 			});
 
 			it("should return false if any value in this Set is not in other", {
 
-				Set.make(1, 2, 3, 4).subsetOf([3, 2, 1, 0]).should.be(false);
+				OrderedSet.make(1, 2, 3, 4).subsetOf([3, 2, 1, 0]).should.be(false);
 
 			});
 
 			it("should work normally for an empty input", {
 
-				Set.make().subsetOf([]).should.be(true);
-				Set.make(1).subsetOf([]).should.be(false);
+				OrderedSet.make().subsetOf([]).should.be(true);
+				OrderedSet.make(1).subsetOf([]).should.be(false);
 
 			});
 
@@ -591,7 +591,7 @@ class SetTest extends BuddySuite {
 			var one, i;
 
 			beforeEach({
-				one = Set.fromSequence([1, 2, 3, 4, 5]);
+				one = OrderedSet.fromSequence([1, 2, 3, 4, 5]);
 				i = 0;
 			});
 
@@ -606,32 +606,44 @@ class SetTest extends BuddySuite {
 		});
 
 		describe("iterator", {
-			var one, two;
+			var one, two, three, iter;
 
 			beforeEach({
 				one = [1, 2, 3, 4, 5];
-				two = Set.fromSequence(one);
+				iter = one.iterator();
+				two = OrderedSet.fromSequence(one);
+				three = new OrderedSet().add(one[0]).add(one[1]).add(one[2]).add(one[3]).add(one[4]);
 			});
 
-			it("should iterate over all values in any order", {
-				two.length.should.be(one.length);
+			it("should iterate in array order", {
 				for (v in two)
-					one.indexOf(v).should.not.be(-1);
+					v.should.be(iter.next());
+			});
+
+			it("should iterate in insertion order", {
+				for (v in three)
+					v.should.be(iter.next());
 			});
 		});
 
 		describe("values", {
-			var one, two;
+			var one, two, three, iter;
 
 			beforeEach({
 				one = [1, 2, 3, 4, 5];
-				two = Set.fromSequence(one);
+				iter = one.iterator();
+				two = OrderedSet.fromSequence(one);
+				three = new OrderedSet().add(one[0]).add(one[1]).add(one[2]).add(one[3]).add(one[4]);
 			});
 
-			it("should iterate over all values in any order", {
-				two.length.should.be(one.length);
+			it("should iterate in array order", {
 				for (v in two.values())
-					one.indexOf(v).should.not.be(-1);
+					v.should.be(iter.next());
+			});
+
+			it("should iterate in insertion order", {
+				for (v in three.values())
+					v.should.be(iter.next());
 			});
 		});
 
@@ -639,7 +651,7 @@ class SetTest extends BuddySuite {
 
 			it("should convert to an equivalent Array", {
 
-				var set = Set.make(1, 2, 3, 4);
+				var set = OrderedSet.make(1, 2, 3, 4);
 				var arrIter = set.toArray().iterator();
 
 				for (v in set)
@@ -649,12 +661,12 @@ class SetTest extends BuddySuite {
 
 		});
 
-		describe("toOrderedSet", {
+		describe("toSet", {
 
-			it("should convert to an equivalent OrderedSet", {
+			it("should convert to an equivalent Set", {
 
-				var set = Set.make(1, 2, 3, 4);
-				set.equals(set.toOrderedSet()).should.be(true);
+				var set = OrderedSet.make(1, 2, 3, 4);
+				set.equals(set.toSet()).should.be(true);
 
 			});
 
@@ -664,21 +676,13 @@ class SetTest extends BuddySuite {
 
 			it("should convert to an equivalent String representation", {
 
-				// this test is tricky, since iteration order is unspecified...
-				var str = Set.make(1, 2, 3, 4).toString();
-				str.startsWith("Set (").should.be(true);
-				str.endsWith(")").should.be(true);
-				str.contains("1").should.be(true);
-				str.contains("2").should.be(true);
-				str.contains("3").should.be(true);
-				str.contains("4").should.be(true);
-
+				OrderedSet.make(1, 2, 3, 4).toString().should.be("OrderedSet ( 1, 2, 3, 4 )");
 
 			});
 
-			it("should work normally for an empty Set", {
+			it("should work normally for an empty OrderedSet", {
 
-				Set.make().toString().should.be("Set ( )");
+				OrderedSet.make().toString().should.be("OrderedSet ( )");
 
 			});
 
@@ -688,7 +692,7 @@ class SetTest extends BuddySuite {
 
 			it("should convert to an equivalent Vector", {
 
-				var set = Set.make(1, 2, 3, 4);
+				var set = OrderedSet.make(1, 2, 3, 4);
 				var vecIter = set.toVector().iterator();
 
 				for (v in set)
@@ -703,7 +707,7 @@ class SetTest extends BuddySuite {
 
 			it("should convert to an equivalent Sequence", {
 
-				var set = Set.make(1, 2, 3, 4);
+				var set = OrderedSet.make(1, 2, 3, 4);
 				var seqIter = set.toSequence().iterator();
 
 				for (v in set)

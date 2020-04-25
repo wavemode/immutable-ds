@@ -6,7 +6,7 @@
  *
  */
 
-package wavemode.immutable.util;
+package wavemode.immutable._internal;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;

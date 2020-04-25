@@ -7,6 +7,6 @@
  */
 
 package wavemode.immutable;
-
-@:genericBuild(wavemode.immutable.util.StructBuild.build())
+// TODO: test
+@:genericBuild(wavemode.immutable._internal.StructBuild.build())
 class Struct<T> {}

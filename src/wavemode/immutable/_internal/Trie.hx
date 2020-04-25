@@ -1,14 +1,13 @@
-package wavemode.immutable.util;
+package wavemode.immutable._internal;
 
-import stdlib.Exception;
 import haxe.ds.Vector;
-using haxe.EnumTools.EnumValueTools;
+import wavemode.immutable.Stack;
 using wavemode.immutable.Functional;
 
 /**
     A hash array mapped trie.
 **/
-@:using(wavemode.immutable.util.Trie.TrieTools)
+@:using(wavemode.immutable._internal.Trie.TrieTools)
 class Trie<K,V> {
     public inline function new(?h, ?k, ?v, ?t, ?c) {
         hash = h;
@@ -25,6 +24,7 @@ class Trie<K,V> {
     public var _count:Null<Int>;
 }
 
+@:nullSafety(Off)
 class TrieTools {
 
     private static inline function copy<K,V>(vec:Vector<Null<Trie<K,V>>>):Vector<Null<Trie<K,V>>> {

@@ -6,11 +6,14 @@
  *
  */
 
-package wavemode.immutable.test;
+package;
 
 import stdlib.Exception;
 import buddy.BuddySuite;
 using buddy.Should;
+
+import wavemode.immutable.Sequence;
+import wavemode.immutable.Vector;
 
 class SequenceTest extends BuddySuite {
     public function new() {

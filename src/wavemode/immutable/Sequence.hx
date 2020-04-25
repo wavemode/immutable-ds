@@ -14,12 +14,10 @@ import haxe.macro.Context;
 #end
 
 import stdlib.Exception;
-import wavemode.immutable.util.FunctionalIterator;
-import haxe.ds.Vector as HVector;
+import wavemode.immutable._internal.FunctionalIterator;
 using wavemode.immutable.Functional;
 
-@:using(wavemode.immutable.util.SequenceMacros)
-abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
+abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject<T> {
 
     /**
         Create a new empty Sequence, or a clone of another object.
@@ -35,6 +33,12 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     **/
     @:from public static inline function fromVector<T>(vec:Vector<T>):Sequence<T>
         return fromIdx(0, vec.has, vec.get, true);
+
+    /**
+        Create a new Sequence from an Array.
+    **/
+    @:from public static inline function fromArray<T, U:Array<T>>(arr:U):Sequence<T>
+        return fromIdx(0, i->i<arr.length, i->arr[i], true);
 
     /**
         Create a new Sequence from an Iterable.
@@ -1089,6 +1093,42 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     }
 
     /**
+        Returns the numerical maximum of the Sequence.
+    **/
+    public macro function max<T>(ethis:ExprOf<Sequence<T>>):ExprOf<T>
+        return macro $e{ethis}.reduce((a, b) -> if (a > b) a else b);
+
+    /**
+        Returns the numerical minimum of the Sequence.
+    **/
+    public macro function min<T>(ethis:ExprOf<Sequence<T>>):ExprOf<T>
+        return macro $e{ethis}.reduce((a, b) -> if (a < b) a else b);
+
+    /**
+        Returns the sum of the elements in the Sequence.
+    **/
+    public macro function sum<T>(ethis:ExprOf<Sequence<T>>):ExprOf<T>
+        return macro $e{ethis}.reduce((a, b) -> a + b);
+
+    /**
+        Returns the product of the elements in the Sequence.
+    **/
+    public macro function product<T>(ethis:ExprOf<Sequence<T>>):ExprOf<T>
+        return macro $e{ethis}.reduce((a, b) -> a * b);
+    
+    /**
+        Returns a Sequence sorted ascending numerically.
+    **/
+    public macro function sortAsc<T>(ethis:ExprOf<Sequence<T>>):ExprOf<Sequence<T>>
+        return macro $e{ethis}.sort((a, b) -> if (a > b) 1 else if (a < b) -1 else 0);
+
+    /**
+        Returns a Sequence sorted descending numerically.
+    **/
+    public macro function sortDesc<T>(ethis:ExprOf<Sequence<T>>):ExprOf<Sequence<T>>
+        return macro $e{ethis}.sort((a, b) -> if (a > b) -1 else if (a < b) 1 else 0);
+
+    /**
         Returns true if the given `index` exists in this Sequence.
     **/
     public inline function has(index:Int):Bool {
@@ -1278,7 +1318,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         var result = clone();
         if (result.tail == null)
             result.tail = [];
-        result.tail.push(value);
+        result.tail.unsafe().push(value);
         ++result.tailLength;
         return result;
     }
@@ -1760,7 +1800,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     }
 
     /**
-        Shuffle the Sequence to be in a random order.
+        Returns a new Sequence with the values lazily shuffled to be in a random order.
     **/
     public function shuffle():Sequence<T> {
 
@@ -1807,7 +1847,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
         return iterator();
 
     /**
-        Iterator oveer each index-value pair in the Sequence. Equivalent to `keyValueIterator()`
+        Iterator over each index-value pair in the Sequence. Equivalent to `keyValueIterator()`
     **/
     public inline function entries():KeyValueIterator<Int,T>
         return keyValueIterator();
@@ -2002,7 +2042,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> {
     private inline function collapseTail():Void {
         if (this.tailLength == 0)
             return;
-        var arr = this.tail, len = this.tailLength;
+        var arr = this.tail.unsafe(), len = this.tailLength;
         this.tail = null;
         this.tailLength = 0;
         var result:Sequence<T> = clone(), index = 0, done = false;

@@ -1,4 +1,4 @@
-package wavemode.immutable.util;
+package wavemode.immutable._internal;
 
 interface MapType<K, V> {
     public function has(k:K):Bool;

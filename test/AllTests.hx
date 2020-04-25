@@ -8,8 +8,9 @@
 
 // TODO: normalize all maximum line lengths
 // TODO: format all code
+// TODO: replace stdlib with exceptions
 
-package wavemode.immutable.test;
+package;
 
 import buddy.Buddy;
 

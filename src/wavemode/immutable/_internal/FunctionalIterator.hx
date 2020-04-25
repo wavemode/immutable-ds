@@ -1,5 +1,4 @@
-package wavemode.immutable.util;
-
+package wavemode.immutable._internal;
 
 class FunctionalIterator<T> {
     public inline function hasNext()

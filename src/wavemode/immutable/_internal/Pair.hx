@@ -1,4 +1,4 @@
-package wavemode.immutable.util;
+package wavemode.immutable._internal;
 
 class Pair<K,V> {
     public static function set<T>(value:T) return new Pair(value, value);

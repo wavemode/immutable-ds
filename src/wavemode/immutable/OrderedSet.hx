@@ -8,6 +8,8 @@
 
 package wavemode.immutable;
 
+// TODO: empty out OrderedSetObject
+
 #if macro
 import haxe.macro.Expr;
 #end

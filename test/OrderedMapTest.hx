@@ -6,11 +6,12 @@
  *
  */
 
-package wavemode.immutable.test;
+package;
 
 import buddy.BuddySuite;
 import haxe.ds.Option;
 using buddy.Should;
+import wavemode.immutable.OrderedMap;
 
 class OrderedMapTest extends BuddySuite {
 	public function new() {

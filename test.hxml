@@ -1,10 +1,12 @@
 -cp src
+-cp test
 -D analyzer-optimize
 -D dce=full
 -D no-deprecation-warnings
 -D buddy-ignore-passing-specs
 -D no-inline
--main wavemode.immutable.test.AllTests
+-main AllTests
+--macro nullSafety("wavemode.immutable", Strict)
 -lib buddy
 -lib stdlib
 --interp

@@ -8,12 +8,13 @@
 
 package wavemode.immutable;
 
+// TODO: empty out SetObject
+
 #if macro
 import haxe.macro.Expr;
 #end
 
 import stdlib.Exception;
-import wavemode.immutable.util.Trie;
 
 @:forward
 abstract Set<T>(SetObject<T>) from SetObject<T> to SetObject<T> {

@@ -8,13 +8,15 @@
 
 package wavemode.immutable;
 
+// TODO: empty out OrderedMapObject
+
 #if macro
 import haxe.macro.Context;
 import haxe.macro.Expr;
 #end
 
 using wavemode.immutable.Functional;
-import wavemode.immutable.util.MapType;
+import wavemode.immutable._internal.MapType;
 import stdlib.Exception;
 
 @:forward

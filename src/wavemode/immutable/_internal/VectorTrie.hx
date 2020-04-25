@@ -1,12 +1,12 @@
-package wavemode.immutable.util;
+package wavemode.immutable._internal;
 
 import haxe.ds.Vector;
-using haxe.EnumTools.EnumValueTools;
-using wavemode.immutable.Functional;
 
 // TODO: VectorTrie.setEach / setRange
 
-@:using(wavemode.immutable.util.VectorTrie.VectorTrieTools)
+using wavemode.immutable.Functional;
+
+@:using(wavemode.immutable._internal.VectorTrie.VectorTrieTools)
 class VectorTrie<T> {
     public inline function new(?v, ?t) 
         if (v != null)
@@ -18,28 +18,9 @@ class VectorTrie<T> {
     public var height:Int = -1;
     public var length:Int = 1;
     public var maxLen:Int = 1;
-    public function toString() {
-        if (value != null) {
-            return 'Value { $value }';
-        } else if (tree != null) {
-            var str = 'Tree { ';
-            for (i in 0...32) {
-                if (tree[i] != null)
-                    str += tree[i] + ", ";
-                else
-                    break;
-                if (i > 2) {
-                    str += " .... ";
-                    break;
-                }
-            }
-            return str.substr(0, str.length - 2) + " }";
-        } else {
-            return 'Empty';
-        }
-    }
 }
 
+@:nullSafety(Off)
 class VectorTrieTools<T> {
 
     private static inline function indexOf(index:Int, height:Int)

@@ -1,11 +1,16 @@
-package wavemode.immutable.test;
+package;
 
-import haxe.macro.Context;
 #if macro
+import haxe.macro.Context;
 import haxe.macro.Expr;
 #end
 
 import haxe.Timer;
+import wavemode.immutable.Map;
+import wavemode.immutable.Vector;
+import wavemode.immutable.Sequence;
+
+// TODO: stress test
 
 class Benchmark {
     static function main() {

@@ -8,7 +8,7 @@
 
 // TODO: Functional test suite
 
-package wavemode.immutable.test;
+package;
 
 import buddy.BuddySuite;
 import haxe.ds.Option;

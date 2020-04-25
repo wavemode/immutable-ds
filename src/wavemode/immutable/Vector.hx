@@ -18,9 +18,9 @@ import haxe.macro.Context;
 #end
 
 import stdlib.Exception;
-import wavemode.immutable.util.VectorTrie;
-import haxe.ds.Vector as HxVector;
-import wavemode.immutable.util.FunctionalIterator;
+import wavemode.immutable._internal.VectorTrie;
+import haxe.ds.Vector as HVector;
+import wavemode.immutable._internal.FunctionalIterator;
 using wavemode.immutable.Functional;
 
 abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
@@ -93,13 +93,13 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	public function push(value:T):Vector<T> {
 		var result = new VectorObject();
 		if (this.tail == null) {
-			result.tail = new HxVector(32);
+			result.tail = new HVector(32);
 			result.tail.unsafe()[0] = value;
 			result.tailLength = 1;
 			result.data = this.data;
 		} else if (this.tailLength == 32) {
 			result.data = this.data.pushVector(this.tail.unsafe());
-			result.tail = new HxVector(32);
+			result.tail = new HVector(32);
 			result.tail.unsafe()[0] = value;
 			result.tailLength = 1;
 		} else {
@@ -119,13 +119,13 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 	**/
 	public function pushEach(values:Sequence<T>):Vector<T> {
 		var result = new VectorObject();
-		result.tail = this.tail.or(new HxVector(32));
+		result.tail = this.tail.or(new HVector(32));
 		result.tailLength = this.tailLength;
 		result.data = this.data;
 		for (v in values) {
 			if (result.tailLength == 32) {
 				result.data = result.data.pushVector(result.tail.unsafe());
-				result.tail = new HxVector(32);
+				result.tail = new HVector(32);
 				result.tailLength = 0;
 			}
 			result.tail.unsafe()[result.tailLength++] = v;
@@ -1028,8 +1028,8 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 			+ " ]";
 	}
 
-	private static function copy<T>(v:HxVector<T>):HxVector<T> {
-		var vec = new HxVector(32);
+	private static function copy<T>(v:HVector<T>):HVector<T> {
+		var vec = new HVector(32);
 		for (i in 0...32)
 			if ((vec[i] = v[i]) == null)
 				break;
@@ -1047,7 +1047,7 @@ abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 private class VectorObject<T> {
 	public inline function new() {}
 	public var data:Null<VectorTrie<T>>;
-	public var tail:Null<HxVector<T>>;
+	public var tail:Null<HVector<T>>;
 	public var tailLength:Int = 0;
 
 	public function iterator():Iterator<T>

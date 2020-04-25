@@ -6,10 +6,13 @@
  *
  */
 
-package wavemode.immutable.test;
+package;
 
 import buddy.BuddySuite;
 using buddy.Should;
+
+import wavemode.immutable.Vector;
+import wavemode.immutable.Sequence;
 
 class VectorTest extends BuddySuite {
 	public function new() {
