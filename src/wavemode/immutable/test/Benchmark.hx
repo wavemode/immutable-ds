@@ -1,7 +1,5 @@
 package wavemode.immutable.test;
 
-import wavemode.immutable.util.Trie;
-import sys.io.File;
 import haxe.macro.Context;
 #if macro
 import haxe.macro.Expr;
@@ -104,7 +102,7 @@ class Benchmark {
             var diff:Float = 0.0;
             var timesLabel = "1M";
             var times = 1000000;
-            var trials = 10;
+            var trials = 100;
             Sys.println($v{label} + " (" + timesLabel + " iterations) (" + trials + " trials)");
             for (TRIAL in 0...trials) {
 

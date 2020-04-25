@@ -1471,6 +1471,7 @@ class SequenceTest extends BuddySuite {
 
             it("should add the given value to the end of the sequence", {
 
+                trace(Sequence.make(1, 2, 3, 4).push(5));
                 Sequence.make(1, 2, 3, 4).push(5).equals([1, 2, 3, 4, 5]).should.be(true);
 
             });
