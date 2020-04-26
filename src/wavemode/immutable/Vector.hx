@@ -17,11 +17,13 @@ import haxe.macro.Expr;
 import haxe.macro.Context;
 #end
 
-import stdlib.Exception;
+import haxe.Exception;
 import wavemode.immutable._internal.VectorTrie;
 import haxe.ds.Vector as HVector;
 import wavemode.immutable._internal.FunctionalIterator;
 using wavemode.immutable.Functional;
+
+// TODO: rename to List
 
 abstract Vector<T>(VectorObject<T>) from VectorObject<T> to VectorObject<T> {
 

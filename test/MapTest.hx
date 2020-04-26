@@ -9,11 +9,9 @@
 package;
 
 import buddy.BuddySuite;
-import haxe.ds.Option;
 using buddy.Should;
-
 using StringTools;
-using stdlib.StringTools;
+
 import wavemode.immutable.Map;
 
 class MapTest extends BuddySuite {

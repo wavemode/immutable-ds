@@ -20,7 +20,7 @@ import haxe.macro.Expr;
 using wavemode.immutable.Functional;
 import wavemode.immutable._internal.MapType;
 import wavemode.immutable._internal.Trie;
-import stdlib.Exception;
+import haxe.Exception;
 
 @:forward
 abstract Map<K, V>(MapObject<K, V>) from MapObject<K, V> to MapObject<K, V> {

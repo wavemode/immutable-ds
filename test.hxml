@@ -8,5 +8,5 @@
 -main AllTests
 --macro nullSafety("wavemode.immutable", Strict)
 -lib buddy
--lib stdlib
+-lib exception
 --interp

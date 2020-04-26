@@ -13,7 +13,7 @@ import haxe.macro.Expr;
 import haxe.macro.Context;
 #end
 
-import stdlib.Exception;
+import haxe.Exception;
 import wavemode.immutable._internal.FunctionalIterator;
 using wavemode.immutable.Functional;
 

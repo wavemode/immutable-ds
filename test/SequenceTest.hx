@@ -8,7 +8,7 @@
 
 package;
 
-import stdlib.Exception;
+import haxe.Exception;
 import buddy.BuddySuite;
 using buddy.Should;
 

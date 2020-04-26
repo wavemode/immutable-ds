@@ -8,9 +8,7 @@
 
 package wavemode.immutable;
 
-import stdlib.Exception;
-
-// TODO: document and test
+import haxe.Exception;
 
 class Functional {
 

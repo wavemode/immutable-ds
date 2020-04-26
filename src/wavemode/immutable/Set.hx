@@ -14,7 +14,7 @@ package wavemode.immutable;
 import haxe.macro.Expr;
 #end
 
-import stdlib.Exception;
+import haxe.Exception;
 
 @:forward
 abstract Set<T>(SetObject<T>) from SetObject<T> to SetObject<T> {

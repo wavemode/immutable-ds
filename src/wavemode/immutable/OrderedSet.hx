@@ -14,7 +14,7 @@ package wavemode.immutable;
 import haxe.macro.Expr;
 #end
 
-import stdlib.Exception;
+import haxe.Exception;
 
 @:forward
 abstract OrderedSet<T>(OrderedSetObject<T>) from OrderedSetObject<T> to OrderedSetObject<T> {

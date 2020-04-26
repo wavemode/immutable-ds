@@ -17,7 +17,7 @@ import haxe.macro.Expr;
 
 using wavemode.immutable.Functional;
 import wavemode.immutable._internal.MapType;
-import stdlib.Exception;
+import haxe.Exception;
 
 @:forward
 abstract OrderedMap<K, V>(OrderedMapObject<K, V>) from OrderedMapObject<K, V> to OrderedMapObject<K, V> {

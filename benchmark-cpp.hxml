@@ -1,0 +1,8 @@
+-cp src
+-cp test
+-D analyzer-optimize
+-D dce=full
+-main Benchmark
+-lib exception
+-D HXCPP_M64
+-cpp bin/cpp/

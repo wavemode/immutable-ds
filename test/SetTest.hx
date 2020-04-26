@@ -13,7 +13,6 @@ import haxe.ds.Option;
 using buddy.Should;
 
 using StringTools;
-using stdlib.StringTools;
 
 import wavemode.immutable.Set;
 
