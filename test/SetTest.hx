@@ -18,8 +18,6 @@ import wavemode.immutable.Set;
 
 class SetTest extends BuddySuite {
 	public function new() {
-		// TODO: failure for unhashable types
-		// TODO: success for hashable types
 
 		describe("new", {
 
@@ -150,7 +148,7 @@ class SetTest extends BuddySuite {
 			});
 		});
 
-		describe("has", {
+		describe("has / contains", {
 			var one, two;
 
 			beforeEach({
@@ -160,10 +158,12 @@ class SetTest extends BuddySuite {
 
 			it("should return true for existing values", {
 				one.has(1).should.be(true);
+				one.contains(1).should.be(true);
 			});
 
 			it("should return false for nonexistant values", {
 				two.has(1).should.be(false);
+				two.contains(1).should.be(false);
 			});
 		});
 
@@ -685,12 +685,12 @@ class SetTest extends BuddySuite {
 
 		});
 
-		describe("toVector", {
+		describe("toList", {
 
-			it("should convert to an equivalent Vector", {
+			it("should convert to an equivalent List", {
 
 				var set = Set.make(1, 2, 3, 4);
-				var vecIter = set.toVector().iterator();
+				var vecIter = set.toList().iterator();
 
 				for (v in set)
 					v.should.be(vecIter.next());

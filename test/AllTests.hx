@@ -6,12 +6,8 @@
  *
  */
 
-// TODO: normalize all maximum line lengths
-// TODO: format all code
-// TODO: replace stdlib with exceptions
-
 package;
 
 import buddy.Buddy;
 
-class AllTests implements Buddy<[SequenceTest, VectorTest, MapTest, OrderedMapTest, SetTest, OrderedSetTest, FunctionalTest]> {}
+class AllTests implements Buddy<[StackTest, SequenceTest, ListTest, MapTest, OrderedMapTest, SetTest, OrderedSetTest]> {}

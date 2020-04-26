@@ -2,7 +2,7 @@ package wavemode.immutable._internal;
 
 import haxe.ds.Vector;
 import wavemode.immutable.Stack;
-using wavemode.immutable.Functional;
+using wavemode.immutable._internal.Functional;
 
 /**
     A hash array mapped trie.

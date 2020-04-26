@@ -8,28 +8,27 @@
 
 package wavemode.immutable;
 
-// TODO: empty out OrderedMapObject
-
 #if macro
 import haxe.macro.Context;
 import haxe.macro.Expr;
 #end
 
-using wavemode.immutable.Functional;
-import wavemode.immutable._internal.MapType;
+using wavemode.immutable._internal.Functional;
 import haxe.Exception;
 
-@:forward
 abstract OrderedMap<K, V>(OrderedMapObject<K, V>) from OrderedMapObject<K, V> to OrderedMapObject<K, V> {
 
 	/**
-		Create a new empty OrderedMap, or a clone of the given `object`.
+		Create a new empty OrderedMap, or a clone of the given KeyValueIterable.
 	**/
-	public function new(?object:OrderedMap<K, V>) {
-		if (object != null)
-			this = object;
-		else
-			this = new OrderedMapObject();
+	public function new(?object:KeyValueIterable<K,V>) {
+		this = new OrderedMapObject();
+		if (object != null) {
+			var result:OrderedMap<K,V> = this;
+			for (k => v in object)
+				result = result.set(k, v);
+			this = result;
+		}
 	}
 
 	/**
@@ -83,20 +82,16 @@ abstract OrderedMap<K, V>(OrderedMapObject<K, V>) from OrderedMapObject<K, V> to
 		if the OrderedMap does not contain this key.
 	**/
 	@:arrayAccess
-	public inline function get(key: K):Null<V>
-		return this.get(key);
-
-}
-
-private class OrderedMapObject<K, V> implements MapType<K, V>  {
+	public inline function get(key:K):Null<V>
+		return this._data.get(key);
 
 	/**
 		Returns a new OrderedMap containing the new (key, value) pair. If an equivalent
 		key already exists in this OrderedMap, it will be replaced.
 	**/
 	public function set(key:K, newValue:V):OrderedMap<K, V> {
-		var k = if (!_keys.contains(key)) _keys.push(key) else _keys;
-		return new OrderedMapObject(_data.set(key, newValue), k);
+		var k = if (!this._keys.contains(key)) this._keys.push(key) else this._keys;
+		return new OrderedMapObject(this._data.set(key, newValue), k);
 	}
 
 	/**
@@ -110,7 +105,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 	public function setEach(keys:Sequence<K>, values:Sequence<V>):OrderedMap<K, V> {
 		var keyIter = keys.iterator(),
 			valIter = values.iterator(),
-			result = this;
+			result = self;
 
 		while (valIter.hasNext() && keyIter.hasNext())
 			result = result.set(keyIter.next(), valIter.next());
@@ -127,7 +122,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		If `key` does not exist, this function returns the unaltered map.
 	**/
 	public function update(key:K, updater:V->V):OrderedMap<K, V>
-		return new OrderedMapObject(_data.update(key, updater), _keys);
+		return new OrderedMapObject(this._data.update(key, updater), this._keys);
 
 	/**
 		Returns a new OrderedMap having updated the values at the keys in `keys` with the
@@ -138,7 +133,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		efficient.
 	**/
 	public function updateEach(keys:Sequence<K>, updater:V->V):OrderedMap<K, V>
-		return new OrderedMapObject(_data.updateEach(keys, updater), _keys);
+		return new OrderedMapObject(this._data.updateEach(keys, updater), this._keys);
 
 	/**
 		Returns a new OrderedMap having every instance of the given value replaced
@@ -147,7 +142,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		If the value does not exist, this function returns the unaltered set.
 	**/
 	public function replace(value:V, newVal:V):OrderedMap<K, V>
-		return new OrderedMapObject(_data.replace(value, newVal), _keys);
+		return new OrderedMapObject(this._data.replace(value, newVal), this._keys);
 
 	/**
 		Returns a new OrderedMap having the given values replaced with the values in
@@ -162,7 +157,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 	public function replaceEach(values:Sequence<V>, newVals:Sequence<V>):OrderedMap<K, V> {
 		var valIter = values.iterator(),
 			newIter = newVals.iterator(),
-			result = this;
+			result = self;
 
 		var merges = [];
 
@@ -177,47 +172,46 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 
 		return result.mergeEach(merges);
 	}
-
-	/**
-		Returns the value associated with the provided key, or null if the OrderedMap
-		does not contain this key.
-	**/
-	public function get(key:K):Null<V>
-		return _data.get(key);
 	
 	/**
-		True if a key exists within this OrderedMap.
+	True if the given key exists within this OrderedMap.
 	**/
-	public function has(key:K):Bool
-		return _data.has(key);
+	public inline function has(key:K):Bool
+		return this._data.has(key);
+
+	/**
+		True if the given value exists within this OrderedMap.
+	**/
+	public inline function contains(value:V):Bool
+		return this._data.contains(value);
 
 	/**
 		True if the OrderedMap is empty.
 	**/
-	public function empty():Bool
-		return _data.empty();
+	public inline function empty():Bool
+		return this._data.empty();
 
 	/**
 		Returns the key of a given value in the map, or null if the value does not
 		exist.
 	**/
 	public function find(value:V):Null<K>
-		return _data.find(value);
+		return this._data.find(value);
 
 	/**
 		Returns the first key at which `predicate` returns true, or null if no match
 		is found.
 	**/
 	public function findWhere(predicate:V->Bool):Null<K>
-		return _data.findWhere(predicate);
+		return this._data.findWhere(predicate);
 
 	/**
 		Returns a new OrderedMap with only the entries for which the predicate
 		function returns true.
 	**/
 		public function filter(predicate:(K, V) -> Bool):OrderedMap<K, V> {
-			var ks = _keys;
-			var d = _data.filter((k, v) -> {
+			var ks = this._keys;
+			var d = this._data.filter((k, v) -> {
 				if (predicate(k, v)) {
 					true;
 				} else {
@@ -232,8 +226,8 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		Returns a new OrderedMap which excludes this value.
 	**/
 	public function remove(value:V):OrderedMap<K, V> {
-		var ks = _keys;
-		var d = _data.filter((k, v) -> {
+		var ks = this._keys;
+		var d = this._data.filter((k, v) -> {
 			if (v != value) {
 				true;
 			} else {
@@ -251,8 +245,8 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		potentially more efficient.
 	**/
 	public inline function removeEach(values:Sequence<V>):OrderedMap<K, V> {
-		var ks = _keys;
-		var d = _data.filter((k, v) -> {
+		var ks = this._keys;
+		var d = this._data.filter((k, v) -> {
 			if (!values.contains(v)) {
 				true;
 			} else {
@@ -267,8 +261,8 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		Returns a new OrderedMap which excludes this key.
 	**/
 	public function delete(key:K):OrderedMap<K, V> {
-		var d = _data.delete(key);
-		var k = _keys.remove(key);
+		var d = this._data.delete(key);
+		var k = this._keys.remove(key);
 		return new OrderedMapObject(d, k);
 	}
 
@@ -279,8 +273,8 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		potentially more efficient.
 	**/
 	public function deleteEach(keys:Sequence<K>):OrderedMap<K, V> {
-		var d = _data.deleteEach(keys);
-		var k = _keys.removeEach(keys);
+		var d = this._data.deleteEach(keys);
+		var k = this._keys.removeEach(keys);
 		return new OrderedMapObject(d, k);
 	}
 
@@ -298,7 +292,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		from `other` override keys from this OrderedMap.
 	**/
 	public function merge(other:KeyValueIterable<K, V>, ?mergeFunction:(V, V) -> V):OrderedMap<K, V> {
-		var result = this;
+		var result = self;
 		for (k => v in other) {
 			if (!result.has(k) || mergeFunction == null)
 				result = result.set(k, v);
@@ -320,8 +314,8 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		This is equivalent to calling `merge()` for each map individually, but potentially
 		more efficient.
 	**/
-	public function mergeEach(others:Sequence<OrderedMap<K, V>>, ?mergeFunction:(V, V) -> V):OrderedMap<K, V> { // TODO: implement
-		var result = this;
+	public function mergeEach(others:Sequence<OrderedMap<K, V>>, ?mergeFunction:(V, V) -> V):OrderedMap<K, V> {
+		var result = self;
 		for (other in others)
 			result = result.merge(other, mergeFunction);
 		return result;
@@ -331,8 +325,8 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		Returns a new OrderedMap with values passed through a mapper function.
 	**/
 	public function map<M>(mapper:(K, V) -> M):OrderedMap<K, M> {
-		var d = _data.map(mapper);
-		return new OrderedMapObject(d, _keys);
+		var d = this._data.map(mapper);
+		return new OrderedMapObject(d, this._keys);
 	}
 
 	/**
@@ -352,7 +346,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		For example, `[1, 2, 3].fold((a, b) -> a - b, 0)` evaluates `0 - 1 - 2 - 3 = -6`
 	**/
 	public function fold<R>(foldFn:(R, V)->R, initialValue:R):R {
-		for (k in _keys) {
+		for (k in this._keys) {
 			var v = get(k).unsafe();
 			initialValue = foldFn(initialValue, v);
 		}
@@ -373,7 +367,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 			throw new Exception("attempt to reduce empty OrderedMap");
 
 		var initialValue:Null<V> = null;
-		for (k in _keys) {
+		for (k in this._keys) {
 			var v = get(k).unsafe();
 			if (initialValue == null)
 				initialValue = v;
@@ -388,13 +382,13 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 	**/
 	public var length(get, never):Int;
 	private inline function get_length()
-		return _data.length;
+		return this._data.length;
 
 	/**
 		Returns true if the given `predicate` is true for every value in the OrderedMap.
 	**/
 	public function every(predicate:V->Bool):Bool {
-		for (k in _keys) {
+		for (k in this._keys) {
 			var v = get(k).unsafe();
 			if (!predicate(v))
 				return false;
@@ -406,7 +400,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		Returns true if the given `predicate` is true for any value in the OrderedMap.
 	**/
 	public function some(predicate:V->Bool):Bool {
-		for (k in _keys) {
+		for (k in this._keys) {
 			var v = get(k).unsafe();
 			if (predicate(v))
 				return true;
@@ -415,15 +409,18 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 	}
 
 	/**
-		True if this and the `other` Map have identical keys and values.
+		True if this and the `other` iterable have identical keys and values.
 	**/
-	public function equals<T:MapType<K, V>>(other:T):Bool {
-		if (length != other.length)
-			return false;
-		for (key => value in this)
-			if (!other.get(key).is(value))
+	public function equals(other:KeyValueIterable<K, V>):Bool {
+		var i = 0;
+		var it = other.keyValueIterator();
+		for (k => _ in it) {
+			if (!has(k))
 				return false;
-		return true;
+			++i;
+		}
+
+		return i == length && !it.hasNext();
 	}
 
 	/**
@@ -436,33 +433,20 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 	/**
 		Iterator over each value in the OrderedMap.
 	**/
-	public function iterator():Iterator<V> {
-		var it = _keys.iterator();
-		return {
-			hasNext: it.hasNext,
-			next: () -> get(it.next()).unsafe()
-		};
-	}
+	public function iterator():Iterator<V>
+		return this.iterator();
 
 	/**
 		Iterator over each key-value pair in the OrderedMap.
 	**/
-	public function keyValueIterator():KeyValueIterator<K, V> {
-		var it = _keys.iterator();
-		return {
-			hasNext: it.hasNext,
-			next: () -> { 
-				var k = it.next();
-				{key: k, value: get(k).unsafe()};
-			}
-		};
-	}
+	public function keyValueIterator():KeyValueIterator<K, V>
+		return this.keyValueIterator();
 
 	/**
 		An iterator of this OrderedMap's keys.
 	**/
 	public inline function keys():Sequence<K>
-		return _keys;
+		return this._keys;
 
 	/**
 		An iterator of this OrderedMap's keys. Equivalent to `iterator()`.
@@ -486,13 +470,13 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		Converts this OrderedMap to a Map.
 	**/
 	public inline function toMap():Map<K, V>
-		return new Map().setEach(keys(), values());
+		return this._data;
 
 	/**
-		Converts this OrderedMap to a Vector, discarding keys.
+		Converts this OrderedMap to a List, discarding keys.
 	**/
-	public inline function toVector():Vector<V>
-		return Vector.fromSequence(values());
+	public inline function toList():List<V>
+		return List.fromSequence(values());
 
 	/**
 		Converts this OrderedMap to a Set, discarding keys.
@@ -515,7 +499,36 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 	/**
 		Convers this OrderedMap to its String representation.
 	**/
-	public function toString():String {
+	public function toString():String
+		return this.toString();
+
+	private var self(get, never):OrderedMap<K,V>;
+	private function get_self() return this;
+
+}
+
+private class OrderedMapObject<K, V> {
+
+	public function keyValueIterator() {
+		var it = this._keys.iterator();
+		return {
+			hasNext: it.hasNext,
+			next: () -> { 
+				var k = it.next();
+				{key: k, value: _data.get(k).unsafe()};
+			}
+		};
+	}
+
+	public function iterator() {
+		var it = this._keys.iterator();
+		return {
+			hasNext: it.hasNext,
+			next: () -> _data.get(it.next()).unsafe()
+		};
+	}
+
+	public function toString() {
 		var result = "OrderedMap {";
 		var cut = false;
 
@@ -529,12 +542,7 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		return result + " }";
 	}
 
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////// INTERNALS ///////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-
-	public function new(?d, ?k) {
+	public function new(?d:Map<K,V>, ?k:List<K>) {
 		if (d != null)
 			_data = d;
 		else
@@ -542,10 +550,10 @@ private class OrderedMapObject<K, V> implements MapType<K, V>  {
 		if (k != null)
 			_keys = k;
 		else
-			_keys = new Vector();
+			_keys = new List();
 	}
 
-	private var _data:Map<K,V>;
-	private var _keys:Vector<K>;
+	public var _data:Map<K,V>;
+	public var _keys:List<K>;
 
 }

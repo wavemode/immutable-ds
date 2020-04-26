@@ -6,7 +6,7 @@
  *
  */
 
-package wavemode.immutable;
+package wavemode.immutable._internal;
 
 import haxe.Exception;
 

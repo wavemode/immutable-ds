@@ -1,0 +1,7 @@
+-cp src
+-D dce=full
+-D no-inline
+-main Main
+--macro nullSafety("wavemode.immutable", Strict)
+-lib exception
+--interp

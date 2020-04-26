@@ -7,24 +7,21 @@ import haxe.macro.Expr;
 
 import haxe.Timer;
 import wavemode.immutable.Map;
-import wavemode.immutable.Vector;
+import wavemode.immutable.List;
 import wavemode.immutable.Sequence;
-
-// TODO: stress test
 
 class Benchmark {
     static function main() {
-
         {
-            bench("Vector.push (1M elements)", 
-                var vec = new Vector(),
-                vec = vec.push(__i__));
+            bench("List.push (1M elements)", 
+                var list = new List(),
+                list = list.push(__i__));
         }
         {
-            var bigvec = new Vector().pushEach(Sequence.step().take(1000000));
-            bench("Vector.get (1M elements)", 
-                var vec = bigvec,
-                vec.get(__i__));
+            var biglist = new List().pushEach(Sequence.step().take(1000000));
+            bench("List.get (1M elements)", 
+                var list = biglist,
+                list.get(__i__));
         }
         {
             var tinyintmap = new Map().setEach(Sequence.step().take(10), Sequence.step().take(10));

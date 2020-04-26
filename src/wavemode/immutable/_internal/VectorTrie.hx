@@ -2,9 +2,7 @@ package wavemode.immutable._internal;
 
 import haxe.ds.Vector;
 
-// TODO: VectorTrie.setEach / setRange
-
-using wavemode.immutable.Functional;
+using wavemode.immutable._internal.Functional;
 
 @:using(wavemode.immutable._internal.VectorTrie.VectorTrieTools)
 class VectorTrie<T> {

@@ -8,6 +8,7 @@
 
 package wavemode.immutable;
 
+import haxe.iterators.StringIteratorUnicode;
 #if macro
 import haxe.macro.Expr;
 import haxe.macro.Context;
@@ -15,7 +16,8 @@ import haxe.macro.Context;
 
 import haxe.Exception;
 import wavemode.immutable._internal.FunctionalIterator;
-using wavemode.immutable.Functional;
+import wavemode.immutable.Stack;
+using wavemode.immutable._internal.Functional;
 
 abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject<T> {
 
@@ -29,16 +31,10 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
             this = new SequenceObject();
 
     /**
-        Create a new Sequence from an immutable Vector.
+        Create a new Sequence from an immutable List.
     **/
-    @:from public static inline function fromVector<T>(vec:Vector<T>):Sequence<T>
+    @:from public static inline function fromVector<T>(vec:List<T>):Sequence<T>
         return fromIdx(0, vec.has, vec.get, true);
-
-    /**
-        Create a new Sequence from an Array.
-    **/
-    @:from public static inline function fromArray<T, U:Array<T>>(arr:U):Sequence<T>
-        return fromIdx(0, i->i<arr.length, i->arr[i], true);
 
     /**
         Create a new Sequence from an Iterable.
@@ -49,7 +45,25 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
     }
 
     /**
-        Create a new Sequence from any number of values.
+        Create a new Sequence from the characters of a given Unicode string.
+    **/
+    public static function fromChars(str:String):Sequence<String>
+        return new StringIteratorUnicode(str).seq().map(String.fromCharCode);
+
+    /**
+        Merge the strings of a sequence into one combined String.
+    **/
+    public macro function toChars(ethis:ExprOf<Sequence<String>>):ExprOf<String> {
+        return macro {
+            var buf = new StringBuf();
+            for (v in $e{ethis})
+                buf.add(v);
+            buf.toString();
+        };
+    }
+
+    /**
+        Macro to create a new Sequence from any number of values.
     **/
     public static macro function make<T>(values:Array<ExprOf<T>>):ExprOf<Sequence<T>>
         return macro @:pos(Context.currentPos()) new Sequence().pushEach([$a{values}]);
@@ -62,15 +76,9 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
 
     /**
         Create an infinite sequence of a repeating `value`.
-
-        If `limit` is provided, the Sequence will be finite.
     **/
-    public static function repeat<T>(value:T, ?limit:Int):Sequence<T> {
-        if (limit != null)
-            return fromIdx(0, _->true, _->value, true).take(limit);
-        else
-            return fromIdx(0, _->true, _->value, true);
-    }
+    public static function constant<T>(value:T):Sequence<T>
+        return fromIdx(0, _->true, _->value, true);
 
     /**
         Create a Sequence representing numbers from `start` to `end`, inclusive.
@@ -708,8 +716,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
     }
 
     /**
-        `mapper` is a function that returns an Iterable type (Array, Vector,
-        Map, etc.)
+        `mapper` is a function that returns an Iterable type (e.g. Array)
             
         `flatMap` creates a new Sequence with each value passed through the
         `mapper` function, then flattened. 
@@ -1800,6 +1807,18 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
     }
 
     /**
+        Returns a new Sequence with values repeated `num` times.
+
+        For example, `[1, 2, 3].repeat(3)` returns `[1, 2, 3, 1, 2, 3, 1, 2, 3]`
+    **/
+    public function repeat(num:Int):Sequence<T> {
+        var seq = new Sequence();
+        for (i in 0...num)
+            seq = seq.concat(this);
+        return seq;
+    }
+
+    /**
         Returns a new Sequence with the values lazily shuffled to be in a random order.
     **/
     public function shuffle():Sequence<T> {
@@ -1883,10 +1902,20 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
         return new OrderedSet().addEach(values());
 
     /**
-        Convert this Sequence to an immutable Vector of its values.
+        Convert this Sequence to an immutable List of its values.
     **/
-    public inline function toVector():Vector<T>
-        return new Vector().pushEach(self);
+    public inline function toList():List<T>
+        return new List().pushEach(self);
+
+    /**
+        Convert this Sequence to an immutable Stack of its values.
+    **/
+    public inline function toStack():Stack<T> {
+        var result = new Stack();
+        for (v in this)
+            result = result.push(v);
+        return result;
+    }
 
     /**
         Retrieve a string representation of the Sequence.
@@ -1932,6 +1961,8 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
             } else {
                 this._hn = () -> false;
                 this._n = null;
+                this._g = null;
+                this._h = null;
                 this._r = null;
                 this.cacheComplete = true;
                 this._stackSize = 0;
@@ -1948,14 +1979,15 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
     private inline function cacheGet(index:Int):T
         return this.cache[index];
 
-    private static inline function fromIt<T>(s:Int, hn:()->Bool, n:()->T, ?r:()->Iterator<T>):Sequence<T> {
+    private static function fromIt<T>(s:Int, hn:()->Bool, n:()->T, ?r:()->Iterator<T>):Sequence<T> {
         // create a sequence from iterator functions hasNext (hn) and next (n)
         var seq = new SequenceObject();
         seq._hn = hn;
         seq._n = n;
 
         // r is a function to retrieve the original iterator, so that calls to
-        // iterator() can return the original iterator rather than creating a new one
+        // iterator() can return the original iterator rather than generating a
+        // cache on this sequence.
         seq._r = r;
 
         // prevent stack overflows in a deeply nested sequence
@@ -1966,7 +1998,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
             return seq;
     }
 
-    private static inline function fromIdx<T>(s:Int, h:Int->Bool, g:Int->T, retrievable:Bool = false):Sequence<T> {
+    private static function fromIdx<T>(s:Int, h:Int->Bool, g:Int->T, retrievable:Bool = false):Sequence<T> {
         // create a sequence from indexed functions has (h) and get (g), optionally
         // with a specified length so that calls to count() are not expensive.
         var seq = new SequenceObject();
@@ -1981,7 +2013,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
         seq._h = h;
 
         // if retrievable is true, we generate a function to retrieve an iterator
-        // so that calls to iterator() are slightly cheaper.
+        // so that calls to iterator() are cheaper and do not generate a cache.
         if (retrievable) {
             seq._r = () -> {
                 var i = 0;
@@ -2039,7 +2071,7 @@ abstract Sequence<T>(SequenceObject<T>) from SequenceObject<T> to SequenceObject
         return result;
     }
 
-    private inline function collapseTail():Void {
+    private function collapseTail():Void {
         if (this.tailLength == 0)
             return;
         var arr = this.tail.unsafe(), len = this.tailLength;

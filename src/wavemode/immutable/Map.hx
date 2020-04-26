@@ -6,10 +6,6 @@
 *
 */
 
-// TODO: contains for all types
-// TODO: robust MapType
-// TODO: empty out MapObject
-
 package wavemode.immutable;
 
 #if macro
@@ -17,29 +13,29 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 #end
 
-using wavemode.immutable.Functional;
-import wavemode.immutable._internal.MapType;
+using wavemode.immutable._internal.Functional;
 import wavemode.immutable._internal.Trie;
 import haxe.Exception;
 
-@:forward
 abstract Map<K, V>(MapObject<K, V>) from MapObject<K, V> to MapObject<K, V> {
 
 	/**
-		Create a new empty Map, or a clone of the given map.
+		Create a new empty Map, or a clone of the given KeyValueIterable.
 	**/
-	public function new(?object:MapObject<K,V>) {
+	public function new(?object:KeyValueIterable<K,V>) {
 		this = new MapObject();
 		if (object != null) {
-			this.data = object.data;
-			this.hash = object.hash;
+			var result:Map<K,V> = this;
+			for (k => v in object)
+				result = result.set(k, v);
+			this = result;
 		}
 	}
 
 	/**
-		Create a new `Map` from a `KeyValueIterable`
+		Create a new Map from a `haxe.ds.Map`
 	**/
-	@:from public static function fromMap<K, V>(map:KeyValueIterable<K, V>):Map<K, V> {
+	@:from public static function fromMap<K, V>(map:haxe.ds.Map<K,V>):Map<K, V> {
 		var result = new Map();
 		for (k => v in map)
 			result = result.set(k, v);
@@ -89,22 +85,15 @@ abstract Map<K, V>(MapObject<K, V>) from MapObject<K, V> to MapObject<K, V> {
 	**/
 	@:arrayAccess
 	public inline function get(key:K):Null<V>
-		return this.get(key);
-
-	private var data(get, never):Null<Trie<K,V>>;
-	private function get_data() return this.data;
-
-}
-
-class MapObject<K, V> implements MapType<K, V> {
+		return data.retrieve(this.hash(key), key);
 
 	/**
 		Returns a new Map containing the new (key, value) pair. If an equivalent key already
 		exists in this Map, it will be replaced.
 	**/
 	public function set(key:K, newValue:V):Map<K, V> {
-		var h = hash(key);
-		var map = new MapObject(hash);
+		var h = this.hash(key);
+		var map = new MapObject(this.hash);
 		map.data = data.insert(h, key, newValue);
 		return map;
 	}
@@ -120,13 +109,13 @@ class MapObject<K, V> implements MapType<K, V> {
 		if (keys.empty())
 			return this;
 		else
-			initHash(keys[0]);
-		var map = new MapObject(hash);
+			this.initHash(keys[0]);
+		var map = new MapObject(this.hash);
 		map.data = data;
 		var keyIt = keys.iterator(), valueIt = values.iterator();
 		while (keyIt.hasNext() && valueIt.hasNext()) {
 			var k = keyIt.next();
-			map.data = map.data.insert(hash(k), k, valueIt.next());
+			map.data = map.data.insert(this.hash(k), k, valueIt.next());
 		}
 		return map;
 	}
@@ -140,8 +129,8 @@ class MapObject<K, V> implements MapType<K, V> {
 		If `key` does not exist, this function returns the unaltered map.
 	**/
 	public function update(key:K, updater:V->V):Map<K, V> {
-		var h = hash(key);
-		var map = new MapObject(hash);
+		var h = this.hash(key);
+		var map = new MapObject(this.hash);
 		map.data = data.update(h, key, updater);
 		return map;
 	}
@@ -158,11 +147,11 @@ class MapObject<K, V> implements MapType<K, V> {
 		if (keys.empty())
 			return this;
 		else
-			initHash(keys[0]);
-		var map = new MapObject(hash);
+			this.initHash(keys[0]);
+		var map = new MapObject(this.hash);
 		map.data = data;
 		for (k in keys)
-			map.data = map.data.update(hash(k), k, updater);
+			map.data = map.data.update(this.hash(k), k, updater);
 		return map;
 	}
 
@@ -173,7 +162,7 @@ class MapObject<K, V> implements MapType<K, V> {
 		If the value does not exist, this function returns the unaltered set.
 	**/
 	public function replace(value:V, newVal:V):Map<K, V> {
-		var map = new MapObject(hash);
+		var map:Map<K,V> = new MapObject(this.hash);
 		for (k => v in this)
 			if (v == value)
 				map = map.set(k, newVal);
@@ -194,7 +183,7 @@ class MapObject<K, V> implements MapType<K, V> {
 	public function replaceEach(values:Sequence<V>, newVals:Sequence<V>):Map<K, V> {
 		var valIter = values.iterator(),
 			newIter = newVals.iterator(),
-			result = this;
+			result = self;
 
 		var merges = [];
 
@@ -209,23 +198,23 @@ class MapObject<K, V> implements MapType<K, V> {
 		return result.mergeEach(merges);
 	}
 
+
 	/**
-		Returns the value associated with the provided key, or null if the Map does not
-		contain this key.
+		True if the given key exists within this Map.
 	**/
-	public function get(key:K):Null<V>
-		return data.retrieve(hash(key), key);
-	
+	public inline function has(key:K):Bool
+		return data.has(this.hash(key), key);
+
 	/**
-		True if a key exists within this Map.
+		True if the given value exists within this Map.
 	**/
-	public function has(key:K):Bool
-		return data.has(hash(key), key);
+	public inline function contains(value:V):Bool
+		return data.contains(value);
 
 	/**
 		True if the Map is empty.
 	**/
-	public function empty():Bool
+	public inline function empty():Bool
 		return data.count() == 0;
 
 	/**
@@ -252,7 +241,7 @@ class MapObject<K, V> implements MapType<K, V> {
 		Returns a new Map with only the entries for which the predicate function returns true.
 	**/
 	public function filter(predicate:(K, V) -> Bool):Map<K, V> {
-		var map = new MapObject(hash);
+		var map:Map<K,V> = new MapObject(this.hash);
 		for (k => v in this)
 			if (predicate(k, v))
 				map = map.set(k, v);
@@ -278,8 +267,8 @@ class MapObject<K, V> implements MapType<K, V> {
 		Returns a new Map which excludes this key.
 	**/
 	public function delete(key:K):Map<K, V> {
-		var h = hash(key);
-		var map = new MapObject(hash);
+		var h = this.hash(key);
+		var map = new MapObject(this.hash);
 		map.data = data.delete(h, key);
 		return map;
 	}
@@ -294,11 +283,11 @@ class MapObject<K, V> implements MapType<K, V> {
 		if (keys.empty())
 			return this;
 		else
-			initHash(keys[0]);
-		var map = new MapObject(hash);
+			this.initHash(keys[0]);
+		var map = new MapObject(this.hash);
 		map.data = data;
 		for (k in keys)
-			map.data = map.data.delete(hash(k), k);
+			map.data = map.data.delete(this.hash(k), k);
 		return map;
 	}
 
@@ -306,7 +295,7 @@ class MapObject<K, V> implements MapType<K, V> {
 		Returns a new Map containing no keys or values.
 	**/
 	public function clear():Map<K, V>
-		return new MapObject(hash);
+		return new MapObject(this.hash);
 
 	/**
 		Returns a new Map resulting from merging `other` into this Map. In other words, this
@@ -316,7 +305,7 @@ class MapObject<K, V> implements MapType<K, V> {
 		from `other` override keys from this Map.
 	**/
 	public function merge(other:Map<K, V>, ?mergeFunction:(V, V) -> V):Map<K, V> {
-		var map = this;
+		var map = self;
 		for (key in other.keys()) {
 			if (map.has(key) && mergeFunction != null)
 				map = map.set(key, mergeFunction(map.get(key).unsafe(), other.get(key).unsafe()));
@@ -338,7 +327,7 @@ class MapObject<K, V> implements MapType<K, V> {
 		more efficient.
 	**/
 	public function mergeEach(others:Sequence<Map<K,V>>, ?mergeFunction:(V,V)->V):Map<K, V> {
-		var map = this;
+		var map = self;
 		for (other in others)
 			map = map.merge(other);
 		return map;
@@ -405,13 +394,10 @@ class MapObject<K, V> implements MapType<K, V> {
 	**/
 	public var length(get, never):Int;
 	private function get_length()
-		if (_length != null)
-			return _length.unsafe();
+		if (this._length != null)
+			return this._length.unsafe();
 		else
-			return _length = data.count();
-
-	private var _length:Null<Int>;
-
+			return this._length = data.count();
 	/**
 		Returns true if the given `predicate` is true for every value in the Map.
 	**/
@@ -434,17 +420,18 @@ class MapObject<K, V> implements MapType<K, V> {
 	}
 
 	/**
-		True if this and the `other` Map have identical keys and values.
+		True if this and the `other` iterable have identical keys and values.
 	**/
-	public function equals<T:MapType<K, V>>(other:T):Bool {
-		if (length != other.length)
-			return false;
-
-		for (k => v in this)
-			if (!other.has(k))
+	public function equals(other:KeyValueIterable<K, V>):Bool {
+		var i = 0;
+		var it = other.keyValueIterator();
+		for (k => _ in it) {
+			if (!has(k))
 				return false;
+			++i;
+		}
 
-		return true;
+		return i == length && !it.hasNext();
 	}
 
 	/**
@@ -465,6 +452,7 @@ class MapObject<K, V> implements MapType<K, V> {
 	**/
 	public function keyValueIterator():KeyValueIterator<K, V>
 		return data.keyValueIterator();
+
 
 	/**
 		An iterator of this Map's keys.
@@ -498,10 +486,10 @@ class MapObject<K, V> implements MapType<K, V> {
 		return new OrderedMap().setEach(keys(), values());
 
 	/**
-		Converts this Map to a Vector, discarding keys.
+		Converts this Map to a List, discarding keys.
 	**/
-	public inline function toVector():Vector<V>
-		return new Vector().pushEach(values());
+	public inline function toList():List<V>
+		return new List().pushEach(values());
 
 	/**
 		Converts this Map to a Set, discarding keys.
@@ -524,7 +512,31 @@ class MapObject<K, V> implements MapType<K, V> {
 	/**
 		Convers this Map to its String representation.
 	**/
-	public function toString():String {
+	public inline function toString():String
+		return this.toString();
+
+	private var data(get, never):Null<Trie<K,V>>;
+	private function get_data() return this.data;
+
+	private var self(get, never):Map<K,V>;
+	private function get_self() return this;
+
+}
+
+private class MapObject<K, V> {
+	
+	public var _length:Null<Int>;
+
+	public function iterator():Iterator<V>
+		return data.iterator();
+
+	public function keyValueIterator():KeyValueIterator<K, V>
+		return data.keyValueIterator();
+
+	/**
+		Convers this Map to its String representation.
+	**/
+	public inline function toString():String {
 		var result = "Map {";
 		var cut = false;
 
@@ -545,19 +557,16 @@ class MapObject<K, V> implements MapType<K, V> {
 			hash = initHash;
 	}
 
-	public var data:Null<Trie<K,V>>;
-	public var hash:K->Int;
-	
-	private function initHash(val:Dynamic):Int {
+	public function initHash(val:Dynamic):Int {
 		if (Std.is(val, String))
-			return (hash = cast stringHash)(val);
+			return (this.hash = cast stringHash)(val);
 		else if (Std.is(val, Int))
-			return (hash = cast intHash)(val);
+			return (this.hash = cast intHash)(val);
 		else
-			return (hash = dynamicHash)(val);
+			return (this.hash = dynamicHash)(val);
 	}
 
-	private static function dynamicHash(val:Dynamic):Int {
+	public static function dynamicHash(val:Dynamic):Int {
 		if (val.hashCode != null)
 			return val.hashCode();
 		else if (val.toString != null)
@@ -566,7 +575,7 @@ class MapObject<K, V> implements MapType<K, V> {
 			return stringHash(Std.string(val));
 	}
 
-	private static function stringHash(str:String):Int {
+	public static function stringHash(str:String):Int {
 		var hash = 5381,
 			i    = str.length;
 		while(i > 0)
@@ -574,11 +583,13 @@ class MapObject<K, V> implements MapType<K, V> {
 		return hash;
 	}
 
-	private static function intHash(x:Int):Int {
+	public static function intHash(x:Int):Int {
 		x = ((x >>> 16) ^ x) * 0x45d9f3b;
 		x = ((x >>> 16) ^ x) * 0x45d9f3b;
 		x = (x >>> 16) ^ x;
 		return x;
 	}
 
+	public var data:Null<Trie<K,V>>;
+	public var hash:K->Int;
 }

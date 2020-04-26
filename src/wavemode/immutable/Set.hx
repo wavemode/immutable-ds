@@ -8,8 +8,6 @@
 
 package wavemode.immutable;
 
-// TODO: empty out SetObject
-
 #if macro
 import haxe.macro.Expr;
 #end
@@ -50,8 +48,12 @@ abstract Set<T>(SetObject<T>) from SetObject<T> to SetObject<T> {
 	**/
 	@:op(A+B)
 	@:commutative
-	public function union(other:Sequence<T>):Set<T>
-		return this.union(other);
+	public function union(other:Sequence<T>):Set<T> {
+		var result = self;
+		for (v in other)
+			result = result.add(v);
+		return result;
+	}
 
 	/**
 		Returns a new Set containing only values in this set that do not appear in `other`.
@@ -59,19 +61,32 @@ abstract Set<T>(SetObject<T>) from SetObject<T> to SetObject<T> {
 		Callable with the `-` operator.
 	**/
 	@:op(A-B)
-	public function subtract(other:Set<T>):Set<T>
-		return this.subtract(other);
+	public function subtract(other:Set<T>):Set<T> {
+		var result = new Set();
+		for (v in this)
+			if (!other.has(v))
+				result = result.add(v);
+		return result;
+	}
 
-}
+	/**
+		Iterator over each value in the OrderedSet.
+	**/
+	public inline function iterator():Iterator<T>
+		return this.iterator();
 
-private class SetObject<T> {
+	/**
+		Convert this OrderedSet to its String representation.
+	**/
+	public inline function toString():String
+		return this.toString();
 
 	/**
 		Returns a new Set containing the new value. If an equivalent value already
 		exists in this Set, this function returns the unaltered Set.
 	**/
 	public function add(val:T):Set<T> {
-		var result = new Set();
+		var result = new SetObject();
 		result.data = data.set(val, true);
 		return result;
 	}
@@ -84,8 +99,8 @@ private class SetObject<T> {
 		efficient.
 	**/
 	public function addEach(values:Sequence<T>):Set<T> {
-		var result = new Set();
-		result.data = data.setEach(values, Sequence.repeat(true));
+		var result = new SetObject();
+		result.data = data.setEach(values, Sequence.constant(true));
 		return result;
 	}
 
@@ -95,7 +110,7 @@ private class SetObject<T> {
 		If the value does not exist, this function returns the unaltered set.
 	**/
 	public function replace(value:T, newVal:T):Set<T> {
-		var result = new Set();
+		var result = new SetObject();
 		result.data = data.delete(value).set(newVal, true);
 		return result;
 	}
@@ -109,8 +124,8 @@ private class SetObject<T> {
 		potentially more efficient.
 	**/
 	public function replaceEach(values:Sequence<T>, newVals:Sequence<T>):Set<T> {
-		var result = new Set();
-		result.data = data.deleteEach(values).setEach(newVals, Sequence.repeat(true));
+		var result = new SetObject();
+		result.data = data.deleteEach(values).setEach(newVals, Sequence.constant(true));
 		return result;
 	}
 
@@ -136,7 +151,7 @@ private class SetObject<T> {
 		Returns a new Set with only the entries for which the predicate function returns true.
 	**/
 		public function filter(predicate:T->Bool):Set<T> {
-			var result = new Set();
+			var result = new SetObject();
 			result.data = data.filter((k, v) -> predicate(k));
 			return result;
 		}
@@ -145,7 +160,7 @@ private class SetObject<T> {
 		Returns a new Set which excludes this key.
 	**/
 	public function remove(value:T):Set<T> {
-		var result = new Set();
+		var result = new SetObject();
 		result.data = data.delete(value);
 		return result;
 	}
@@ -157,7 +172,7 @@ private class SetObject<T> {
 		efficient.
 	**/
 	public function removeEach(values:Sequence<T>):Set<T> {
-		var result = new Set();
+		var result = new SetObject();
 		result.data = data.deleteEach(values);
 		return result;
 	}
@@ -169,17 +184,6 @@ private class SetObject<T> {
 		return new Set();
 
 	/**
-		Returns a new Set resulting from merging `other` into this Set. In other words, this
-		takes each value in `other` and adds it to this Set.
-	**/
-	public function union(other:Sequence<T>):Set<T> {
-		var result = this;
-		for (v in other)
-			result = result.add(v);
-		return result;
-	}
-
-	/**
 		Returns a new Set resulting from merging each set in `others` into this Set. In other words, this
 		takes each value in each set in `others` and adds it to this Set.
 
@@ -187,20 +191,9 @@ private class SetObject<T> {
 		efficient.
 	**/
 	public function unionEach(others:Sequence<Sequence<T>>):Set<T> {
-		var result = this;
+		var result = self;
 		for (other in others)
 			result = result.union(other);
-		return result;
-	}
-
-	/**
-		Returns a new Set containing only values in this set that do not appear in `other`.
-	**/
-	public function subtract(other:Set<T>):Set<T> {
-		var result = new Set();
-		for (v in this)
-			if (!other.has(v))
-				result = result.add(v);
 		return result;
 	}
 
@@ -211,7 +204,7 @@ private class SetObject<T> {
 		efficient.
 	**/
 	public function subtractEach(others:Sequence<Set<T>>):Set<T> {
-		var result = this;
+		var result = self;
 		for (other in others)
 			result = result.subtract(other);
 		return result;
@@ -241,7 +234,7 @@ private class SetObject<T> {
 		efficient.
 	**/
 	public function intersectEach(others:Sequence<Sequence<T>>):Set<T> {
-		var result = this;
+		var result = self;
 		for (other in others)
 			result = result.intersect(other);
 		return result;
@@ -329,11 +322,6 @@ private class SetObject<T> {
 		for (v in this)
 			sideEffect(v);
 
-	/**
-		Iterator over each value in the Set.
-	**/
-	public inline function iterator():Iterator<T>
-		return data.keys().iterator();
 
 	/**
 		An iterator of this Set's keys. Equivalent to `iterator()`.
@@ -354,10 +342,33 @@ private class SetObject<T> {
 		return new OrderedSet().addEach(values());
 
 	/**
-		Converts this Set to a Vector.
+		Converts this Set to a List.
 	**/
-	public function toVector():Vector<T>
-		return toSequence().toVector();
+	public function toList():List<T>
+		return toSequence().toList();
+
+
+	/**
+		Returns a Sequence of values in this Set.
+	**/
+	public function toSequence():Sequence<T>
+		return Sequence.fromIterable(this);
+
+	private var self(get, never):Set<T>;
+	private function get_self() return this;
+
+	private var data(get, never):Map<T,Bool>;
+	private function get_data() return this.data;
+
+}
+
+private class SetObject<T> {
+
+	/**
+		Iterator over each value in the Set.
+	**/
+	public inline function iterator():Iterator<T>
+		return data.keys().iterator();
 
 	/**
 		Convert this Set to its String representation.
@@ -376,13 +387,7 @@ private class SetObject<T> {
 		return result + " )";
 	}
 
-	/**
-		Returns a Sequence of values in this Set.
-	**/
-	public function toSequence():Sequence<T>
-		return Sequence.fromIterable(this);
-
 	public function new() data = new Map();
-	private var data:Map<T,Bool>;
+	public var data:Map<T,Bool>;
 
 }

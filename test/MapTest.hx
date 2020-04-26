@@ -16,8 +16,6 @@ import wavemode.immutable.Map;
 
 class MapTest extends BuddySuite {
 	public function new() {
-		// TODO: failure for unhashable types
-		// TODO: success for hashable types
 
 		describe("new", {
 
@@ -205,7 +203,7 @@ class MapTest extends BuddySuite {
 				(one["d"] == null).should.be(true);
 			});
 		});
-		
+
 		describe("has", {
 			var one;
 
@@ -219,6 +217,22 @@ class MapTest extends BuddySuite {
 
 			it("should return false for nonexisting keys", {
 				one.has("d").should.be(false);
+			});
+		});
+
+		describe("contains", {
+			var one;
+
+			beforeEach({
+				one = Map.make({a: 10, b: 20, c: 30});
+			});
+
+			it("should return true for existing values", {
+				one.contains(10).should.be(true);
+			});
+
+			it("should return false for nonexisting values", {
+				one.contains(11).should.be(false);
 			});
 		});
 
@@ -750,12 +764,12 @@ class MapTest extends BuddySuite {
 
 		});
 
-		describe("toVector", {
+		describe("toList", {
 
-			it("should convert to an equivalent Vector in the same order", {
+			it("should convert to an equivalent List in the same order", {
 
 				var one = Map.make({a: 10, b: 20, c: 30});
-				var vecIter = one.toVector().iterator();
+				var vecIter = one.toList().iterator();
 
 				for (v in one)
 					v.should.be(vecIter.next());

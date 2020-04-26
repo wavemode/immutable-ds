@@ -8,8 +8,6 @@
 
 package wavemode.immutable;
 
-// TODO: empty out OrderedSetObject
-
 #if macro
 import haxe.macro.Expr;
 #end
@@ -50,28 +48,36 @@ abstract OrderedSet<T>(OrderedSetObject<T>) from OrderedSetObject<T> to OrderedS
 	**/
 	@:op(A+B)
 	@:commutative
-	public function union(other:Sequence<T>):OrderedSet<T>
-		return this.union(other);
+	public function union(other:Sequence<T>):OrderedSet<T> {
+		var result = self;
+		for (v in other)
+			result = result.add(v);
+		return result;
+	}
+
 
 	/**
-		Returns a new OrderedSet containing only values in this set that do not appear in `other`.
+		Returns a new OrderedSet containing only values in this set that do not appear
+		in `other`.
 
 		Callable with the `-` operator.
 	**/
 	@:op(A-B)
-	public function subtract(other:OrderedSet<T>):OrderedSet<T>
-		return this.subtract(other);
+	public function subtract(other:OrderedSet<T>):OrderedSet<T> {
+		var result = new OrderedSet();
+		for (v in this)
+			if (!other.has(v))
+				result = result.add(v);
+		return result;
+	}
 
-}
-
-private class OrderedSetObject<T> {
 
 	/**
 		Returns a new OrderedSet containing the new value. If an equivalent value already
 		exists in this OrderedSet, this function returns the unaltered OrderedSet.
 	**/
 	public function add(val:T):OrderedSet<T> {
-		var result = new OrderedSet();
+		var result = new OrderedSetObject();
 		result.data = data.set(val, true);
 		return result;
 	}
@@ -84,8 +90,8 @@ private class OrderedSetObject<T> {
 		efficient.
 	**/
 	public function addEach(values:Sequence<T>):OrderedSet<T> {
-		var result = new OrderedSet();
-		result.data = data.setEach(values, Sequence.repeat(true));
+		var result = new OrderedSetObject();
+		result.data = data.setEach(values, Sequence.constant(true));
 		return result;
 	}
 
@@ -95,7 +101,7 @@ private class OrderedSetObject<T> {
 		If the value does not exist, this function returns the unaltered set.
 	**/
 	public function replace(value:T, newVal:T):OrderedSet<T> {
-		var result = new OrderedSet();
+		var result = new OrderedSetObject();
 		result.data = data.delete(value).set(newVal, true);
 		return result;
 	}
@@ -109,8 +115,8 @@ private class OrderedSetObject<T> {
 		potentially more efficient.
 	**/
 	public function replaceEach(values:Sequence<T>, newVals:Sequence<T>):OrderedSet<T> {
-		var result = new OrderedSet();
-		result.data = data.deleteEach(values).setEach(newVals, Sequence.repeat(true));
+		var result = new OrderedSetObject();
+		result.data = data.deleteEach(values).setEach(newVals, Sequence.constant(true));
 		return result;
 	}
 
@@ -136,7 +142,7 @@ private class OrderedSetObject<T> {
 		Returns a new OrderedSet with only the entries for which the predicate function returns true.
 	**/
 		public function filter(predicate:T->Bool):OrderedSet<T> {
-			var result = new OrderedSet();
+			var result = new OrderedSetObject();
 			result.data = data.filter((k, v) -> predicate(k));
 			return result;
 		}
@@ -145,7 +151,7 @@ private class OrderedSetObject<T> {
 		Returns a new OrderedSet which excludes this key.
 	**/
 	public function remove(value:T):OrderedSet<T> {
-		var result = new OrderedSet();
+		var result = new OrderedSetObject();
 		result.data = data.delete(value);
 		return result;
 	}
@@ -157,7 +163,7 @@ private class OrderedSetObject<T> {
 		efficient.
 	**/
 	public function removeEach(values:Sequence<T>):OrderedSet<T> {
-		var result = new OrderedSet();
+		var result = new OrderedSetObject();
 		result.data = data.deleteEach(values);
 		return result;
 	}
@@ -169,17 +175,6 @@ private class OrderedSetObject<T> {
 		return new OrderedSet();
 
 	/**
-		Returns a new OrderedSet resulting from merging `other` into this OrderedSet. In other words, this
-		takes each value in `other` and adds it to this OrderedSet.
-	**/
-	public function union(other:Sequence<T>):OrderedSet<T> {
-		var result = this;
-		for (v in other)
-			result = result.add(v);
-		return result;
-	}
-
-	/**
 		Returns a new OrderedSet resulting from merging each set in `others` into this OrderedSet. In other words, this
 		takes each value in each set in `others` and adds it to this OrderedSet.
 
@@ -187,20 +182,9 @@ private class OrderedSetObject<T> {
 		efficient.
 	**/
 	public function unionEach(others:Sequence<Sequence<T>>):OrderedSet<T> {
-		var result = this;
+		var result = self;
 		for (other in others)
 			result = result.union(other);
-		return result;
-	}
-
-	/**
-		Returns a new OrderedSet containing only values in this set that do not appear in `other`.
-	**/
-	public function subtract(other:OrderedSet<T>):OrderedSet<T> {
-		var result = new OrderedSet();
-		for (v in this)
-			if (!other.has(v))
-				result = result.add(v);
 		return result;
 	}
 
@@ -211,7 +195,7 @@ private class OrderedSetObject<T> {
 		efficient.
 	**/
 	public function subtractEach(others:Sequence<OrderedSet<T>>):OrderedSet<T> {
-		var result = this;
+		var result = self;
 		for (other in others)
 			result = result.subtract(other);
 		return result;
@@ -241,7 +225,7 @@ private class OrderedSetObject<T> {
 		efficient.
 	**/
 	public function intersectEach(others:Sequence<Sequence<T>>):OrderedSet<T> {
-		var result = this;
+		var result = self;
 		for (other in others)
 			result = result.intersect(other);
 		return result;
@@ -329,11 +313,6 @@ private class OrderedSetObject<T> {
 		for (v in this)
 			sideEffect(v);
 
-	/**
-		Iterator over each value in the OrderedSet.
-	**/
-	public inline function iterator():Iterator<T>
-		return data.keys().iterator();
 
 	/**
 		A sequence of this OrderedSet's values.
@@ -354,14 +333,42 @@ private class OrderedSetObject<T> {
 		return new Set().addEach(values());
 
 	/**
-		Converts this OrderedSet to a Vector.
+		Converts this OrderedSet to a List.
 	**/
-	public function toVector():Vector<T>
-		return toSequence().toVector();
+	public function toList():List<T>
+		return toSequence().toList();
+	
+	/**
+		Returns a Sequence of values in this OrderedSet.
+	**/
+	public function toSequence():Sequence<T>
+		return Sequence.fromIterable(this);
+
+	/**
+		Iterator over each value in the OrderedSet.
+	**/
+	public inline function iterator():Iterator<T>
+		return this.iterator();
 
 	/**
 		Convert this OrderedSet to its String representation.
 	**/
+	public inline function toString():String
+		return this.toString();
+
+	private var self(get, never):OrderedSet<T>;
+	private function get_self() return this;
+
+	private var data(get, never):OrderedMap<T,Bool>;
+	private function get_data() return this.data;
+
+}
+
+private class OrderedSetObject<T> {
+
+	public inline function iterator():Iterator<T>
+		return data.keys().iterator();
+
 	public function toString():String {
 		var result = "OrderedSet (";
 		var cut = false;
@@ -376,13 +383,7 @@ private class OrderedSetObject<T> {
 		return result + " )";
 	}
 
-	/**
-		Returns a Sequence of values in this OrderedSet.
-	**/
-	public function toSequence():Sequence<T>
-		return Sequence.fromIterable(this);
-
 	public function new() data = new OrderedMap();
-	private var data:OrderedMap<T,Bool>;
+	public var data:OrderedMap<T,Bool>;
 
 }

@@ -13,7 +13,7 @@ import buddy.BuddySuite;
 using buddy.Should;
 
 import wavemode.immutable.Sequence;
-import wavemode.immutable.Vector;
+import wavemode.immutable.List;
 
 class SequenceTest extends BuddySuite {
     public function new() {
@@ -31,7 +31,7 @@ class SequenceTest extends BuddySuite {
             it("should create a clone of another iterable", {
 
                 new Sequence([1, 2, 3, 4]).equals([1, 2, 3, 4]).should.be(true);
-                new Sequence(new Vector().pushEach([1, 2, 3, 4])).equals([1, 2, 3, 4]).should.be(true);
+                new Sequence(new List().pushEach([1, 2, 3, 4])).equals([1, 2, 3, 4]).should.be(true);
 
             });
 
@@ -94,25 +94,19 @@ class SequenceTest extends BuddySuite {
 
         });
 
-        describe("repeat", {
+        describe("constant", {
 
             it("should create an infinite Sequence of a repeating value", {
 
                 // how do we test for infinity? let's say, 100
-                Sequence.repeat(4).take(100).equals([for (i in 0...100) 4]).should.be(true);
+                Sequence.constant(4).take(100).equals([for (i in 0...100) 4]).should.be(true);
 
             });
 
             it("should behave normally with a null value", {
 
                 // how do we test for infinity? let's say, 100
-                Sequence.repeat(null).take(100).equals([for (i in 0...100) null]).should.be(true);
-
-            });
-
-            it("should be limited by the limit parameter", {
-
-                Sequence.repeat(5, 5).equals([5, 5, 5, 5, 5]).should.be(true);
+                Sequence.constant(null).take(100).equals([for (i in 0...100) null]).should.be(true);
 
             });
 
@@ -191,11 +185,11 @@ class SequenceTest extends BuddySuite {
 
         });
 
-        describe("@:from Vector", {
+        describe("@:from List", {
 
-            it("should be equivalent to the original vector", {
+            it("should be equivalent to the original list", {
 
-                var vec = Vector.fromArray([1, 2, 3, 4, 5]);
+                var vec = List.fromArray([1, 2, 3, 4, 5]);
                 var seq:Sequence<Int> = vec;
 
                 seq.equals([1, 2, 3, 4, 5]).should.be(true);
@@ -231,6 +225,26 @@ class SequenceTest extends BuddySuite {
                 var seq:Sequence<Int> = { iterator: () -> it };
 
                 seq.take(5).equals([0, 1, 2, 3, 4]).should.be(true);
+
+            });
+
+        });
+
+        describe("fromChars / toChars", {
+
+            it("should convert a string to a sequence of strings", {
+
+                Sequence.fromChars("Hello, world").toChars().should.be("Hello, world");
+                Sequence.fromChars("Hello, world").count().should.be(12);
+                Sequence.fromChars("Hello, world").get(2).should.be("l");
+
+            });
+
+            it("should properly handle unicode strings", {
+
+                Sequence.fromChars("🍞❤😊").count().should.be(3);
+                Sequence.fromChars("🍞❤😊").get(2).should.be("😊");
+                Sequence.fromChars("🍞❤😊").reverse().toChars().should.be("😊❤🍞");
 
             });
 
@@ -362,15 +376,6 @@ class SequenceTest extends BuddySuite {
                 seq.equals([1, 2, 3, 4]).should.be(true);
             });
 
-            it("should create a cache and force cacheComplete in a cacheless sequence", {
-
-                var seq = Sequence.make(1, 2, 3, 4).reverse().force();
-                @:privateAccess seq._this.cache.should.not.be(null);
-                @:privateAccess seq._this.cacheComplete.should.be(true);
-                seq.equals([4, 3, 2, 1]).should.be(true);
-
-            });
-
             it("should return the exact same sequence it was called on", {
 
                 // here we are testing for identity (memory address), not equality
@@ -496,7 +501,7 @@ class SequenceTest extends BuddySuite {
 
             it("should evaluate the removal values lazily", {
 
-                Sequence.make(2, 2, 2).removeEach(Sequence.repeat(2)).equals([]).should.be(true);
+                Sequence.make(2, 2, 2).removeEach(Sequence.constant(2)).equals([]).should.be(true);
 
             });
 
@@ -877,7 +882,7 @@ class SequenceTest extends BuddySuite {
 
             it("should evaluate the indices lazily", {
                 
-                Sequence.make(1, 2, 3, 4).setEach(Sequence.step(0, 1), Sequence.repeat(0)).equals([0, 0, 0, 0]).should.be(true);
+                Sequence.make(1, 2, 3, 4).setEach(Sequence.step(0, 1), Sequence.constant(0)).equals([0, 0, 0, 0]).should.be(true);
 
             });
 
@@ -986,7 +991,7 @@ class SequenceTest extends BuddySuite {
 
             it("should evaluate its replacements lazily", {
 
-                Sequence.make(1, 2, 3, 4).replaceEach(Sequence.step(1, 1), Sequence.repeat(0)).equals([0, 0, 0, 0]).should.be(true);
+                Sequence.make(1, 2, 3, 4).replaceEach(Sequence.step(1, 1), Sequence.constant(0)).equals([0, 0, 0, 0]).should.be(true);
 
             });
 
@@ -1073,7 +1078,6 @@ class SequenceTest extends BuddySuite {
 
             });
 
-
         });
 
         describe("foldRight", {
@@ -1106,6 +1110,24 @@ class SequenceTest extends BuddySuite {
                 
                 seq.has(-1).should.be(false);
                 seq.has(4).should.be(false);
+
+            });
+
+        });
+
+        describe("contains", {
+
+            it("should return true if the value exists", {
+
+                Sequence.make(1, 2, 3, 4).contains(4).should.be(true);
+
+            });
+
+            it("should return false if the value does not exist", {
+
+                var seq = Sequence.make(1, 2, 3, 4).force();
+            
+                seq.contains(0).should.be(false);
 
             });
 
@@ -1845,6 +1867,29 @@ class SequenceTest extends BuddySuite {
 
         });
 
+        describe("repeat", {
+
+            it("should create a Sequence repeated num times", {
+				
+                Sequence.make(1, 2, 3).repeat(3).equals([1, 2, 3, 1, 2, 3, 1, 2, 3]).should.be(true);
+
+            });
+
+            it("should behave normally with an empty Sequence", {
+
+                new Sequence<Int>().repeat(3).equals([]).should.be(true);
+
+            });
+
+            it("should behave normally with 0 or fewer repetitions", {
+
+                Sequence.make(1, 2, 3).repeat(0).equals([]).should.be(true);
+                Sequence.make(1, 2, 3).repeat(-10).equals([]).should.be(true);
+
+            });
+
+        });
+
         describe("shuffle", {
 
             // this test is disabled because it could occasionally fail...
@@ -2040,15 +2085,28 @@ class SequenceTest extends BuddySuite {
 
         });
 
-        describe("toVector", {
+        describe("toList", {
 
-            it("should convert a sequence to an equivalent Vector", {
+            it("should convert a sequence to an equivalent List", {
 
-                var vec = Sequence.make(1, 2, 3, 4).toVector();
+                var vec = Sequence.make(1, 2, 3, 4).toList();
                 vec.length.should.be(4);
                 var i = 0;
                 for (v in vec)
                     Sequence.make(1, 2, 3, 4)[i++].should.be(v);
+
+            });
+
+        });
+
+        describe("toStack", {
+
+            it("should convert a sequence to an equivalent reversed Stack", {
+
+                var stack = Sequence.make(1, 2, 3, 4).toStack();
+                var i = 0;
+                for (v in stack)
+                    Sequence.make(1, 2, 3, 4).reverse()[i++].should.be(v);
 
             });
 
