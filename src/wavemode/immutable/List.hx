@@ -23,7 +23,7 @@ using wavemode.immutable._internal.Functional;
 abstract List<T>(ListObject<T>) from ListObject<T> to ListObject<T> {
 
 	/**
-		Create a new empty List, or a clone of an Iterable.
+		Create a new empty List, or a clone of any iterable.
 	**/
 	public inline function new(?seq:Sequence<T>)
 		if (seq != null)
@@ -46,20 +46,22 @@ abstract List<T>(ListObject<T>) from ListObject<T> to ListObject<T> {
 	/**
 		Create a List of `num` repeating values.
 	**/
-	public static function constant<T>(obj:T, num:Int):List<T>
+	public static inline function constant<T>(obj:T, num:Int):List<T>
 		return Sequence.constant(obj).take(num).toList();
 
 	/**
 		Create a List of numbers from `start` to `end`, inclusive.
 	**/
-	public static function range(start:Int, end:Int):List<Int>
+	public static inline function range(start:Int, end:Int):List<Int>
 		return Sequence.range(start, end).toList();
 
 	/**
 		Create a List of `len` values starting with `start` and
 		repeatedly passed through the `iterator` function.
+
+		For example, `iterate(4, 0, x -> x + 3)` returns `[0, 3, 6, 9]`
 	**/
-	public static function iterate<T>(len:Int, start:T, iterator:T->T):List<T>
+	public static inline function iterate<T>(len:Int, start:T, iterator:T->T):List<T>
 		return Sequence.iterate(start, iterator).take(len).toList();
 	
 	/**
@@ -68,18 +70,18 @@ abstract List<T>(ListObject<T>) from ListObject<T> to ListObject<T> {
 
 		`step` is 1 by default. `start` is 0 by default.
 	**/
-	public static function step(len:Int, start:Int = 0, step:Int = 1)
+	public static inline function step(len:Int, start:Int = 0, step:Int = 1)
 		return Sequence.step(start, step).take(len).toList();
 
 	/**
 		Create a List with each of the given `sequences` concatenated together,
 		separated by `separator`
 	**/
-	public static function join<T>(sequences:Sequence<Sequence<T>>, separator:T):List<T>
+	public static inline function join<T>(sequences:Sequence<Sequence<T>>, separator:T):List<T>
 		return Sequence.join(sequences, separator).toList();
 
 	/**
-		Create a new List with all the values in 	`arr`.
+		Create a new List with all the values in `arr`.
 	**/
 	@:from public static inline function fromArray<T>(arr:Array<T>):List<T>
 		return new List().pushEach(arr);
@@ -139,7 +141,7 @@ abstract List<T>(ListObject<T>) from ListObject<T> to ListObject<T> {
 			result.data = this.data.pop();
 		} else {
 			result.data = this.data;
-			result.tail = this.tail;
+			result.tail = copy(this.tail.unsafe());
 			result.tailLength = this.tailLength - 1;
 		}
 		return result;
@@ -187,7 +189,7 @@ abstract List<T>(ListObject<T>) from ListObject<T> to ListObject<T> {
 
 		If `index` is out of bounds, this function returns the unaltered List.
 	**/
-	public inline function set(index:Int, value:T):List<T> {
+	public function set(index:Int, value:T):List<T> {
 		if (index < 0 || index >= length)
 			return this;
 		var result = new ListObject();
@@ -201,7 +203,6 @@ abstract List<T>(ListObject<T>) from ListObject<T> to ListObject<T> {
 		}
 		return result;
 	}
-
 
 	/**
 		Returns a new List with the given `indices` replaced with the respective
@@ -1024,24 +1025,8 @@ abstract List<T>(ListObject<T>) from ListObject<T> to ListObject<T> {
 	/**
 		Convert this List to its String representation.
 	**/
-	public function toString():String {
-		var result = new StringBuf();
-		result.add("List [");
-		var cut = false;
-
-		var index:Int = 0;
-		while (has(index)) {
-			cut = true;
-			result.add(' ${get(index++)},');
-		}
-
-		return
-			(if (cut)
-				result.toString().substr(0, result.length - 1)
-			else
-				result.toString())
-			+ " ]";
-	}
+	public function toString():String
+		return this.toString();
 
 	private static function copy<T>(v:Vector<T>):Vector<T> {
 		var vec = new Vector(32);
@@ -1071,6 +1056,21 @@ private class ListObject<T> {
 	public function keyValueIterator():KeyValueIterator<Int, T>
 		return (this:List<T>).keyValueIterator();
 
-	public function toString():String
-		return (this:List<T>).toString();
+	public function toString():String {
+		var result = new StringBuf();
+		result.add("List [");
+		var cut = false;
+
+		for (v in this) {
+			cut = true;
+			result.add(' $v,');
+		}
+
+		return
+			(if (cut)
+				result.toString().substr(0, result.length - 1)
+			else
+				result.toString())
+			+ " ]";
+	}
 }

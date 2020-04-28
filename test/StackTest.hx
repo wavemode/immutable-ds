@@ -61,7 +61,7 @@ class StackTest extends BuddySuite {
 
             it("should return null with an empty Stack", {
                
-                new Stack<Int>().peek().should.be(null);
+                (new Stack<Int>().peek() == null).should.be(true);
 
             });
 

@@ -1,0 +1,10 @@
+-cp src
+-cp test
+-D dce=no
+-D no-inline
+-D buddy-ignore-passing-specs
+-main AllTests
+--macro nullSafety("wavemode.immutable", Strict)
+-lib buddy
+-lib exception
+--interp

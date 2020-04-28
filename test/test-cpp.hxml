@@ -2,10 +2,10 @@
 -cp test
 -D analyzer-optimize
 -D dce=full
--D no-deprecation-warnings
+-D no-inline
 -D buddy-ignore-passing-specs
 -main AllTests
 --macro nullSafety("wavemode.immutable", Strict)
 -lib buddy
 -lib exception
---interp
+-cpp bin/cpp/

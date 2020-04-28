@@ -826,7 +826,7 @@ class SequenceTest extends BuddySuite {
                     .map(x -> x*2);
 
                 seq.take(2).equals([2, 4]).should.be(true);
-                (() -> seq.take(3).force()).should.throwAnything();
+                (() -> seq.take(3).force()).should.throwAnything(); // FAIL: cpp
 
             });
 

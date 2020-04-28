@@ -15,6 +15,7 @@ using buddy.Should;
 using StringTools;
 
 import wavemode.immutable.Set;
+import wavemode.immutable.OrderedSet;
 
 class SetTest extends BuddySuite {
 	public function new() {
@@ -506,12 +507,12 @@ class SetTest extends BuddySuite {
 			});
 
 			it("should work for comparing ordered sets", {
-				one.equals(Set.fromSequence([1, 2, 3, 4, 5])).should.be(true);
-				two.equals(Set.fromSequence([3, 7, 8, 9, 10])).should.be(true);
-				three.equals(Set.fromSequence([4, 5, 6, 7])).should.be(true);
-				one.equals(Set.fromSequence([1, 2])).should.be(false);
-				two.equals(Set.fromSequence([3, 7])).should.be(false);
-				three.equals(Set.fromSequence([4, 5])).should.be(false);
+				one.equals(OrderedSet.fromSequence([1, 2, 3, 4, 5])).should.be(true);
+				two.equals(OrderedSet.fromSequence([3, 7, 8, 9, 10])).should.be(true);
+				three.equals(OrderedSet.fromSequence([4, 5, 6, 7])).should.be(true);
+				one.equals(OrderedSet.fromSequence([1, 2])).should.be(false);
+				two.equals(OrderedSet.fromSequence([3, 7])).should.be(false);
+				three.equals(OrderedSet.fromSequence([4, 5])).should.be(false);
 			});
 
 			it("should work for comparing unordered sets", {

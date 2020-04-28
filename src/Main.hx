@@ -1,9 +1,9 @@
 
+import wavemode.immutable.Stack;
 import wavemode.immutable.Sequence;
 
 class Main {
     static function main() {
-        var seq = Sequence.fromChars("hello, 🍞❤🍞🍞🍞 world").reverse();
-        Sys.println(seq.toChars());
+        Sys.println(new Stack(Sequence.make(1, 2, 3, 4)).toSequence().equals([4, 3, 2, 1]));
     }
 }

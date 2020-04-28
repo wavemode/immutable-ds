@@ -524,8 +524,6 @@ abstract Map<K, V>(MapObject<K, V>) from MapObject<K, V> to MapObject<K, V> {
 }
 
 private class MapObject<K, V> {
-	
-	public var _length:Null<Int>;
 
 	public function iterator():Iterator<V>
 		return data.iterator();
@@ -567,12 +565,7 @@ private class MapObject<K, V> {
 	}
 
 	public static function dynamicHash(val:Dynamic):Int {
-		if (val.hashCode != null)
-			return val.hashCode();
-		else if (val.toString != null)
-			return stringHash(val.toString())
-		else
-			return stringHash(Std.string(val));
+		return stringHash(Std.string(val));
 	}
 
 	public static function stringHash(str:String):Int {
@@ -591,5 +584,6 @@ private class MapObject<K, V> {
 	}
 
 	public var data:Null<Trie<K,V>>;
+	public var _length:Null<Int>;
 	public var hash:K->Int;
 }

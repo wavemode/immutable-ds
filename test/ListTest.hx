@@ -126,15 +126,21 @@ class ListTest extends BuddySuite {
 
 		describe("step", {
 
-			it("should create an infinite list of steps", {
+			it("should create a list of num steps", {
 
-				List.step(100, 0, 2).take(100).equals([for (i in 0...100) i * 2]).should.be(true);
+				List.step(100, 0, 2).equals([for (i in 0...100) i * 2]).should.be(true);
 
 			});
 
 			it("the default step value should be 1", {
 
-				List.step(100, 0).take(100).equals([for (i in 0...100) i]).should.be(true);
+				List.step(100, 0).equals([for (i in 0...100) i]).should.be(true);
+
+			});
+
+			it("the default start value should be 0", {
+
+				List.step(100).equals([for (i in 0...100) i]).should.be(true);
 
 			});
 

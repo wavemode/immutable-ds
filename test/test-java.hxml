@@ -1,0 +1,9 @@
+-cp src
+-cp test
+-D dce=full
+-D no-inline
+-D buddy-ignore-passing-specs
+-main Main
+#-lib buddy
+-lib exception
+-java bin/java/
